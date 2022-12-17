@@ -1,5 +1,3 @@
-# PDAVIS_Demo
-
 ## Implementation of PDAVIS Live Demo
 
 - [Table of Contents](#implementation-of-pdavis-Live-demo)
