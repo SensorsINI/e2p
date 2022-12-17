@@ -14,12 +14,12 @@
 The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision sensor that reports both conventional polarization frames and asynchronous, continuously per-pixel polarization brightness changes (polarization events) with \textbf{fast temporal resolution} and \textbf{large dynamic range}.
 
 ### 2. Requirements
-* Python 3.8.10
-* PyTorch == 1.10.0
-* TorchVision == 0.11.0
-* CUDA 11.4
-* tqdm
-* timm
+* create virtual environement
+```mkvirtualenv pdavis_demo```
+* Python 3.8.10, CUDA 11.3, PyTorch == 1.11.0+cu113, TorchVision == 0.12.0+cu113
+```pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113```
+* install other dependencies
+```pip install -r requirements.txt```
 
 Lower version should be fine but not fully tested :-)
 
