@@ -3,7 +3,7 @@
 - [Table of Contents](#implementation-of-pdavis-Live-demo)
   * [1. Introduction](#1-introduction)
   * [2. Requirements](#2-requirements)
-  * [3. How to Run It?](#3-how-to-run-it-?)
+  * [3. Run](#3-run)
   * [4. Results](#4-results)
     + [4.1. Saving Directory](#41-saving-directory)
   * [5. Citation](#5-citation)
@@ -23,7 +23,7 @@ The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision
 
 Lower version should be fine but not fully tested :-)
 
-### 3. How to Run It?
+### 3. Run
  1. Download pre-trained polarization reconstruction model `e2p.pth` at [here](https://github.com/SensorsINI/pdavis_demo).
  2. Connect hardware: PDAVIS to USB.
  3. Find out which serial port device the Arduino appears on. You can use dmesg on linux. You can put the serial port into _globals_and_utils.py_ to avoid adding as argument.
