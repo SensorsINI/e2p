@@ -23,7 +23,7 @@ import numpy as np
 from tqdm import tqdm
 
 from globals_and_utils import *
-from engineering_notation import EngNumber  as eng # only from pip
+from engineering_notation import EngNumber as eng # only from pip
 import argparse
 import psutil
 
@@ -31,7 +31,6 @@ from pyaer.davis import DAVIS
 from pyaer import libcaer
 
 log=my_logger(__name__)
-
 
 
 def producer(args):
