@@ -3,19 +3,11 @@
 - [Table of Contents](#implementation-of-pdavis-Live-demo)
   * [1. Introduction](#1-introduction)
   * [2. Requirements](#2-requirements)
-  * [3. Experiments](#3-experiments)
-    + [3.1. Test](#31-test)
+  * [3. How to Run It?](#3-how-to-run-it?)
   * [4. Results](#4-results)
-    + [4.1. Qualitative Comparison](#41-qualitative-comparison)
-    + [4.2. Quantitative Comparison](#42-quantitative-comparison)
-    + [4.3. Results Download](#43-results-download)
-  * [5. Proposed RGBP-Glass Dataset](#5-proposed-rgbp-glass-dataset)
-    + [5.1. Overview](#51-overview)
-    + [5.2. File Structure](#52-file-structure)
-    + [5.3. Download](#53-download)
-  * [6. Citation](#6-citation)
-  * [7. LICENSE](#7-license)
-  * [8. Contact](#8-contact)
+    + [4.1. Saving Directory](#41-saving-directory)
+  * [5. Citation](#5-citation)
+  * [6. Contact](#6-contact)
 
 ### 1. Introduction
 
