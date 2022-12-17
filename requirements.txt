@@ -1,0 +1,9 @@
+matplotlib
+opencv-python==4.5.5.64
+tqdm
+pandas
+h5py
+numpy==1.22.2
+scikit-image
+pytorch_msssim
+timm
