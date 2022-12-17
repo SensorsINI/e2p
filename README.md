@@ -3,7 +3,7 @@
 - [Table of Contents](#implementation-of-pdavis-Live-demo)
   * [1. Introduction](#1-introduction)
   * [2. Requirements](#2-requirements)
-  * [3. How to Run It?](#3-how-to-run-it?)
+  * [3. How to Run It?](#3-how-to-run-it-?)
   * [4. Results](#4-results)
     + [4.1. Saving Directory](#41-saving-directory)
   * [5. Citation](#5-citation)
