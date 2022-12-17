@@ -86,30 +86,10 @@ If you find this project useful, please consider citing:
       organization={SPIE}
     }
 
+### 6. Contact
 
+[Haiyang Mei](https://mhaiyang.github.io/) (haiyang.mei@outlook.com)
 
-
-#### 5.3. Download
-Please refer to the [Project Page](https://mhaiyang.github.io/CVPR2022_PGSNet/index.html).
-
-
-### 6. Citation
-Please cite our paper if you find the work useful::
-
-```
-@InProceedings{Mei_2022_CVPR,
-    author    = {Mei, Haiyang and Dong, Bo and Dong, Wen and Yang, Jiaxi and Baek, Seung-Hwan and Heide, Felix and Peers, Pieter and Wei, Xiaopeng and Yang, Xin},
-    title     = {Glass Segmentation Using Intensity and Spectral Polarization Cues},
-    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-    month     = {June},
-    year      = {2022},
-    pages     = {12622-12631}
-}
-```
-
-### 8. Contact
-
-Haiyang Mei (haiyang.mei@outlook.com)
-Tobi Delbrück (tobi@ini.uzh.ch)
+[Tobi Delbrück](https://www.ini.uzh.ch/~tobi/) (tobi@ini.uzh.ch)
 
 **[⬆ back to top](#1-introduction)**
