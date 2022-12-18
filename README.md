@@ -11,7 +11,7 @@
 
 ### 1. Introduction
 
-The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision sensor that reports both conventional polarization frames and asynchronous, continuously per-pixel polarization brightness changes (polarization events) with \textbf{fast temporal resolution} and \textbf{large dynamic range}.
+The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision sensor that reports both conventional polarization frames and asynchronous, continuously per-pixel polarization brightness changes (polarization events) with **_fast temporal resolution_** and **_large dynamic range_**.
 
 ### 2. Requirements
 * create virtual environement
