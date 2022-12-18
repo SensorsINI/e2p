@@ -23,7 +23,7 @@ from typing import Optional
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0' # all TF messages
 
-import tensorflow as tf
+# import tensorflow as tf
 
 import cv2
 import numpy as np
@@ -85,15 +85,15 @@ UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / m
 EVENT_COUNT_PER_FRAME = 2300  # events per frame
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for colleting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
-MIN_PRODUCER_FRAME_INTERVAL_MS=7.0 # inference takes about 3ms and normalization takes 1ms, hence at least 2ms
+MIN_PRODUCER_FRAME_INTERVAL_MS=10.0 # inference takes about 3ms and normalization takes 1ms, hence at least 2ms
         # limit rate that we send frames to about what the GPU can manage for inference time
         # after we collect sufficient events, we don't bother to normalize and send them unless this time has
         # passed since last frame was sent. That way, we make sure not to flood the consumer
 MAX_SHOWN_DVS_FRAME_RATE_HZ=15 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
 FINGER_OUT_TIME_S = 2  # time to hold out finger when joker is detected
-ROOT_DATA_FOLDER= os.path.join(get_download_folder(),'trixsyDataset') # does not properly find the Downloads folder under Windows if not on same disk as Windows
+ROOT_DATA_FOLDER= os.path.join(get_download_folder(), 'pdavis_demo_dataset') # does not properly find the Downloads folder under Windows if not on same disk as Windows
 
-DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'data') #/home/tobi/Downloads/trixsyDataset/data' #'data'  # new samples stored here
+DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'data') #/home/tobi/Downloads/pdavis_demo_dataset/data' #'data'  # new samples stored here
 NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER = 3 # when joker detected by consumer, this many random previous nonjoker frames are also saved
 JOKERS_FOLDER = DATA_FOLDER + '/jokers'  # where samples are saved during runtime of consumer
 NONJOKERS_FOLDER = DATA_FOLDER + '/nonjokers'

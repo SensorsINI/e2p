@@ -47,11 +47,12 @@ Lower version should be fine but not fully tested :-)
  2. Connect hardware: PDAVIS to USB.
  3. Find out which serial port device the Arduino appears on. You can use dmesg on linux. You can put the serial port into _globals_and_utils.py_ to avoid adding as argument.
  4. In first terminal run producer
-  ```shell script
+  ```
   python -m producer
+  python -m producer --record='test'
   ```
  5. In a second terminal run consumer
-  ```shell script
+  ```
   python -m consumer  arduinoPort
   example: python -m consumer.py 
   ```

@@ -128,7 +128,7 @@ def producer(args):
                     while events is None or len(events)<args.num_events:
                         pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
                         # assemble 'frame' of EVENT_COUNT events
-                        if  num_pol_event>0:
+                        if num_pol_event>0:
                             if events is None:
                                 events=pol_events
                             else:
@@ -177,8 +177,8 @@ def producer(args):
                     frame_number+=1
                     client_socket.sendto(data, udp_address)
                 if recording_folder is not None and (save_next_frame or recording_activated):
-                    recording_frame_number=write_next_image(recording_folder,recording_frame_number,frame)
-                    print('.',end='')
+                    recording_frame_number=write_next_image(recording_folder, recording_frame_number, frame)
+                    print('.', end='')
                     if recording_frame_number%80==0:
                         print('')
                 if SHOW_DVS_OUTPUT:
@@ -193,15 +193,15 @@ def producer(args):
                             if not cv2_resized:
                                 cv2.resizeWindow('DVS', 600, 600)
                                 cv2_resized = True
-                            k=    cv2.waitKey(1) & 0xFF
-                            if k== ord('q') or k== ord('x'):
+                            k = cv2.waitKey(1) & 0xFF
+                            if k == ord('q') or k == ord('x'):
                                 if recording_folder is not None:
                                     log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
                                 print_timing_info()
                                 break
-                            elif k==ord('p'):
+                            elif k == ord('p'):
                                 print_timing_info()
-                            elif k==ord(' ') and (spacebar_records or space_toggles_recording):
+                            elif k == ord(' ') and (spacebar_records or space_toggles_recording):
                                 if spacebar_records:
                                     save_next_frame=True
                                 else:
@@ -248,10 +248,10 @@ if __name__ == '__main__':
         "--spacebar_records", action='store_true',
         help="only record when spacebar pressed down")
     parser.add_argument(
-        "--space_toggles_recording", action='store_true',
+        "--space_toggles_recording", action='store_true', default=True,
         help="space toggles recording on/off")
     parser.add_argument(
-        "--numpy", action='store_true',
+        "--numpy", action='store_true', default=True,
         help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")
     args = parser.parse_args()
 
