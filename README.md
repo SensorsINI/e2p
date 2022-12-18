@@ -46,17 +46,16 @@ Lower version should be fine but not fully tested :-)
  1. Download pre-trained polarization reconstruction model `e2p.pth` at [here](https://github.com/SensorsINI/pdavis_demo).
  2. Connect hardware: PDAVIS to USB.
 
-[//]: # ( 3. Find out which serial port device the Arduino appears on. You can use dmesg on linux. You can put the serial port into _globals_and_utils.py_ to avoid adding as argument.)
- 3. In first terminal run producer
-  ```
-  python -m producer
-  python -m producer --record='test'
-  ```
+ 3. In first terminal run producer 
+    ```
+    python -m producer
+    python -m producer --record='test'
+    ```
  4. In a second terminal run consumer
-  ```
-  python -m consumer  arduinoPort
-  example: python -m consumer.py 
-  ```
+    ```
+    python -m consumer  arduinoPort
+    example: python -m consumer.py 
+    ```
 
 ### 4. Results
 
