@@ -15,11 +15,30 @@ The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision
 
 ### 2. Requirements
 * create virtual environement
-```mkvirtualenv pdavis_demo```
+  ```
+  mkvirtualenv pdavis_demo
+  ```
 * Python 3.8.10, CUDA 11.3, PyTorch == 1.11.0+cu113, TorchVision == 0.12.0+cu113
-```pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113```
+  ```
+  pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
+  ```
+* install pyaer
+  ```
+  sudo apt-get update
+  sudo apt-get install build-essential pkg-config libusb-1.0-0-dev
+  git clone https://gitlab.com/inivation/dv/libcaer.git
+  cd libcaer
+  git checkout e68c3b4c115f59d5fd030fd44db12c702dddc3a5
+  sudo apt install cmake
+  cmake -DCMAKE_INSTALL_PREFIX=/usr .
+  make -j
+  sudo make install
+  pip install pyaer
+  ```
 * install other dependencies
-```pip install -r requirements.txt```
+  ```
+  pip install -r requirements.txt
+  ```
 
 Lower version should be fine but not fully tested :-)
 

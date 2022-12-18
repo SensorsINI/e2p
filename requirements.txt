@@ -10,3 +10,5 @@ timm
 # for demo
 engineering_notation
 psutil
+pyserial
+pyzmq
