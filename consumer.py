@@ -24,7 +24,13 @@ import collections
 from pathlib import Path
 import random
 
-from train import load_latest_model, classify_joker_img
+from e2p import V16 as Model
+
+# for network inference
+# from train import load_latest_model, classify_joker_img
+import torch
+from inference import legacy_compatibility, load_model
+from utils.util import torch2cv2
 
 log=my_logger(__name__)
 
@@ -51,7 +57,12 @@ if __name__ == '__main__':
 
     address = ("", PORT)
     server_socket.bind(address)
-    model, interpreter, input_details, output_details, model_folder = load_latest_model()
+
+    # network inference
+    # model, interpreter, input_details, output_details, model_folder = load_latest_model()
+    checkpoint = torch.load(args.checkpoint_path)
+    args, checkpoint = legacy_compatibility(args, checkpoint)
+    model = load_model(checkpoint)
 
     serial_port = args.serial_port
     log.info('opening serial port {} to send commands to finger'.format(serial_port))
@@ -134,39 +145,32 @@ if __name__ == '__main__':
                 img_01_float32 = (1. / 255) * np.array(img255, dtype=np.float32)
             with Timer('run CNN'):
                 # pred = model.predict(img[None, :])
-                is_joker, joker_prob, pred = classify_joker_img(img_01_float32, model, interpreter, input_details, output_details)
-
-            if is_joker: # joker
-                arduino_serial_port.write(b'1')
-                finger_out_time=time.time()
-                state=STATE_FINGER_OUT
-                log.info('sent finger OUT')
-            elif state==STATE_FINGER_OUT and time.time()-finger_out_time>FINGER_OUT_TIME_S:
-                arduino_serial_port.write(b'0')
-                state=STATE_IDLE
-                log.info('sent finger IN')
-            else:
-                pass
+                # is_joker, joker_prob, pred = classify_joker_img(img_01_float32, model, interpreter, input_details, output_details)
+                output = model(img_01_float32)
+                intensity = torch2cv2(output['i'])
+                aolp = torch2cv2(output['a'])
+                dolp = torch2cv2(output['d'])
+                image = cv2.hconcat([intensity, aolp, dolp])
+                show_frame(image, 'polarization', cv2_resized)
 
             # save time since frame sent from producer
             dt=time.time()-timestamp
             with Timer('producer->consumer inference delay', delay=dt, show_hist=True):
                 pass
 
-            save_img_255 = (img255.squeeze()).astype('uint8')
-            if is_joker: # joker
-                # find next name that is not taken yet
-                next_joker_index= write_next_image(JOKERS_FOLDER, next_joker_index, save_img_255)
-                show_frame(1-img_01_float32, 'joker', cv2_resized)
-                non_joker_window_number=0
-                for saved_img in saved_non_jokers:
-                    next_non_joker_index= write_next_image(NONJOKERS_FOLDER, next_non_joker_index, saved_img)
-                    show_frame(saved_img, f'nonjoker{non_joker_window_number}', cv2_resized)
-                    non_joker_window_number+=1
-                saved_non_jokers.clear()
-            else:
-                if random.random()<.03: # append random previous images to not just get previous almost jokers
-                    saved_non_jokers.append(copy.deepcopy(save_img_255)) # we need to copy the frame otherwise the reference is overwritten by next frame and we just get the same frame over and over
+            # save_img_255 = (img255.squeeze()).astype('uint8')
+            # if is_joker: # joker
+            #     # find next name that is not taken yet
+            #     next_joker_index= write_next_image(JOKERS_FOLDER, next_joker_index, save_img_255)
+            #     show_frame(1-img_01_float32, 'joker', cv2_resized)
+            #     non_joker_window_number=0
+            #     for saved_img in saved_non_jokers:
+            #         next_non_joker_index= write_next_image(NONJOKERS_FOLDER, next_non_joker_index, saved_img)
+            #         show_frame(saved_img, f'nonjoker{non_joker_window_number}', cv2_resized)
+            #         non_joker_window_number+=1
+            #     saved_non_jokers.clear()
+            # else:
+            #     if random.random()<.03: # append random previous images to not just get previous almost jokers
+            #         saved_non_jokers.append(copy.deepcopy(save_img_255)) # we need to copy the frame otherwise the reference is overwritten by next frame and we just get the same frame over and over
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-
