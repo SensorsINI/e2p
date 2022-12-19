@@ -230,7 +230,6 @@ def producer(args):
         cleanup()
 
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='producer: Generates DVS frames for trixy to process in consumer', allow_abbrev=True,

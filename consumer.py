@@ -10,7 +10,6 @@
 """
 
 import argparse
-import copy
 import glob
 import pickle
 import cv2
@@ -27,7 +26,6 @@ import random
 from e2p import V16 as Model
 
 # for network inference
-# from train import load_latest_model, classify_joker_img
 import torch
 from inference import legacy_compatibility, load_model
 from utils.util import torch2cv2
@@ -42,15 +40,61 @@ except Exception as e:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='consumer: Consumes DVS frames to process', allow_abbrev=True,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    parser.add_argument(
-        "--serial_port", type=str, default=SERIAL_PORT,
-        help="serial port, e.g. /dev/ttyUSB0")
+    parser = argparse.ArgumentParser(description='consumer: Consumes DVS frames to process', allow_abbrev=True,
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--checkpoint_path', required=True, type=str, help='path to latest checkpoint (default: None)')
+    parser.add_argument('--events_file_path', required=True, type=str,
+                        help='path to events (HDF5)')
+    parser.add_argument('--output_folder', default="/tmp/output", type=str,
+                        help='where to save outputs to')
+    parser.add_argument('--height', required=True, type=int, default=260,
+                        help='sensor resolution: height')
+    parser.add_argument('--width', required=True, type=int, default=346,
+                        help='sensor resolution: width')
+    parser.add_argument('--device', default='0', type=str,
+                        help='indices of GPUs to enable')
+    parser.add_argument('--is_flow', action='store_true',
+                        help='If true, save output to flow npy file')
+    parser.add_argument('--update', action='store_true',
+                        help='Set this if using updated models')
+    parser.add_argument('--color', action='store_true', default=False,
+                        help='Perform color reconstruction')
+    parser.add_argument('--voxel_method', default='between_frames', type=str,
+                        help='which method should be used to form the voxels',
+                        choices=['between_frames', 'k_events', 't_seconds'])
+    parser.add_argument('--k', type=int,
+                        help='new voxels are formed every k events (required if voxel_method is k_events)')
+    parser.add_argument('--sliding_window_w', type=int,
+                        help='sliding_window size (required if voxel_method is k_events)')
+    parser.add_argument('--t', type=float,
+                        help='new voxels are formed every t seconds (required if voxel_method is t_seconds)')
+    parser.add_argument('--sliding_window_t', type=float,
+                        help='sliding_window size in seconds (required if voxel_method is t_seconds)')
+    parser.add_argument('--loader_type', default='H5', type=str,
+                        help='Which data format to load (HDF5 recommended)')
+    parser.add_argument('--filter_hot_events', action='store_true',
+                        help='If true, auto-detect and remove hot pixels')
+    parser.add_argument('--legacy_norm', action='store_true', default=False,
+                        help='Normalize nonzero entries in voxel to have mean=0, std=1 according to Rebecq20PAMI and Scheerlinck20WACV.'
+                             'If --e2vid or --firenet_legacy are set, --legacy_norm will be set to True (default False).')
+    parser.add_argument('--robust_norm', action='store_true', default=False,
+                        help='Normalize voxel')
+    parser.add_argument('--e2vid', action='store_true', default=False,
+                        help='set required parameters to run original e2vid as described in Rebecq20PAMI')
+    parser.add_argument('--firenet_legacy', action='store_true', default=False,
+                        help='set required parameters to run legacy firenet as described in Scheerlinck20WACV (not for retrained models using updated code)')
+    parser.add_argument('--calculate_mode', action='store_true', default=False,
+                        help='Calculate the parameters and FLOPs.')
+    parser.add_argument('--real_data', action='store_true', default=False,
+                        help='currently our own real data has no frame')
+    parser.add_argument('--direction', default=None, type=str,
+                        help='Specify which dataloader will be used for FireNet inference.')
 
     args = parser.parse_args()
+
+    if args.device is not None:
+        os.environ['CUDA_VISIBLE_DEVICES'] = args.device
+    print('Loading checkpoint: {} ...'.format(args.checkpoint_path))
 
     log.info('opening UDP port {} to receive frames from producer'.format(PORT))
     server_socket: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -58,15 +102,10 @@ if __name__ == '__main__':
     address = ("", PORT)
     server_socket.bind(address)
 
-    # network inference
-    # model, interpreter, input_details, output_details, model_folder = load_latest_model()
+    # initial network model
     checkpoint = torch.load(args.checkpoint_path)
     args, checkpoint = legacy_compatibility(args, checkpoint)
     model = load_model(checkpoint)
-
-    serial_port = args.serial_port
-    log.info('opening serial port {} to send commands to finger'.format(serial_port))
-    arduino_serial_port = serial.Serial(serial_port, 115200, timeout=5)
 
     log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to receive the {IMSIZE}x{IMSIZE} images')
 
@@ -89,21 +128,16 @@ if __name__ == '__main__':
     next_joker_index = next_path_index(JOKERS_FOLDER)
     next_non_joker_index = next_path_index(NONJOKERS_FOLDER)
     cv2_resized = dict()
-    finger_out_time = 0
-    STATE_IDLE = 0
-    STATE_FINGER_OUT = 1
-    state = STATE_IDLE
 
     def print_num_saved_images():
         log.info(f'saved {next_non_joker_index} nonjokers to {NONJOKERS_FOLDER} and {next_joker_index} jokers to {JOKERS_FOLDER}')
 
     atexit.register(print_num_saved_images)
 
-    log.info('GPU is {}'.format('available' if len(tf.config.list_physical_devices('GPU')) > 0 else 'not available (check tensorflow/cuda setup)'))
+    log.info('GPU is {}'.format('available' if args.device is not None else 'not available (check cuda setup)'))
 
     def show_frame(frame, name, resized_dict):
         """ Show the frame in named cv2 window and handle resizing
-
         :param frame: 2d array of float
         :param name: string name for window
         """
@@ -116,25 +150,11 @@ if __name__ == '__main__':
             cv2.waitKey(1)
 
     last_frame_number=0
-    # receive_data=bytearray(UDP_BUFFER_SIZE)
     while True:
         timestr = time.strftime("%Y%m%d-%H%M")
         with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True):
             with Timer('receive UDP'):
-                # num_bytes_recieved=0
-                # receive_data=None
-                # tries=0
-                # while True: # read datagrams unti there are no more, so that we always get very latest one in our receive buffer
-                #     inputready, _, _ = select([server_socket], [], [], .1)
-                #     num_ready=len(inputready)
-                #     if (r
-                #     eceive_data is not None)  and (num_ready==0 or tries>2):
-                #         # Has danger that as we recieve a datagram, another arrives, getting us stuck here.
-                #         # Hence we break from loop only if  we have data AND (there is no more OR we already tried 3 times to empty the socket)
-                #         break
-                #     if num_ready>0:
-                        receive_data = server_socket.recv(UDP_BUFFER_SIZE)
-                    # tries+=1
+                receive_data = server_socket.recv(UDP_BUFFER_SIZE)
 
             with Timer('unpickle and normalize/reshape'):
                 (frame_number, timestamp, img255) = pickle.loads(receive_data)
@@ -145,7 +165,6 @@ if __name__ == '__main__':
                 img_01_float32 = (1. / 255) * np.array(img255, dtype=np.float32)
             with Timer('run CNN'):
                 # pred = model.predict(img[None, :])
-                # is_joker, joker_prob, pred = classify_joker_img(img_01_float32, model, interpreter, input_details, output_details)
                 output = model(img_01_float32)
                 intensity = torch2cv2(output['i'])
                 aolp = torch2cv2(output['a'])
@@ -158,19 +177,5 @@ if __name__ == '__main__':
             with Timer('producer->consumer inference delay', delay=dt, show_hist=True):
                 pass
 
-            # save_img_255 = (img255.squeeze()).astype('uint8')
-            # if is_joker: # joker
-            #     # find next name that is not taken yet
-            #     next_joker_index= write_next_image(JOKERS_FOLDER, next_joker_index, save_img_255)
-            #     show_frame(1-img_01_float32, 'joker', cv2_resized)
-            #     non_joker_window_number=0
-            #     for saved_img in saved_non_jokers:
-            #         next_non_joker_index= write_next_image(NONJOKERS_FOLDER, next_non_joker_index, saved_img)
-            #         show_frame(saved_img, f'nonjoker{non_joker_window_number}', cv2_resized)
-            #         non_joker_window_number+=1
-            #     saved_non_jokers.clear()
-            # else:
-            #     if random.random()<.03: # append random previous images to not just get previous almost jokers
-            #         saved_non_jokers.append(copy.deepcopy(save_img_255)) # we need to copy the frame otherwise the reference is overwritten by next frame and we just get the same frame over and over
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
