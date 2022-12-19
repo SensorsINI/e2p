@@ -157,15 +157,16 @@ if __name__ == '__main__':
                 receive_data = server_socket.recv(UDP_BUFFER_SIZE)
 
             with Timer('unpickle and normalize/reshape'):
-                (frame_number, timestamp, img255) = pickle.loads(receive_data)
+                (frame_number, timestamp, img255, voxel) = pickle.loads(receive_data)
                 dropped_frames=frame_number-last_frame_number-1
                 if dropped_frames>0:
                     log.warning(f'Dropped {dropped_frames} frames from producer')
                 last_frame_number=frame_number
                 img_01_float32 = (1. / 255) * np.array(img255, dtype=np.float32)
+                voxel_01_float32 = (1. / 255) * np.array(voxel, dtype=np.float32)
             with Timer('run CNN'):
                 # pred = model.predict(img[None, :])
-                output = model(img_01_float32)
+                output = model(torch.from_numpy(voxel_01_float32))
                 intensity = torch2cv2(output['i'])
                 aolp = torch2cv2(output['a'])
                 dolp = torch2cv2(output['d'])

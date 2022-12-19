@@ -186,15 +186,14 @@ def producer(args):
                     ts = torch.from_numpy((events[:, 0] - events[0, 1]).astype(np.float32))
                     ps = torch.from_numpy(events[:, 3].astype(np.float32))
                     voxel = events_to_voxel_torch(xs, ys, ts, ps, args.num_bins, sensor_size=args.sensor_resolution)
-
-
+                    voxel = (voxel.numpy()*255).astype('uint8')
 
                 # statistics
                 frame = frame.astype('uint8')
 
                 with Timer('send frame'):
                     time_last_frame_sent=time.time()
-                    data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
+                    data = pickle.dumps((frame_number, time_last_frame_sent, frame, voxel)) # send frame_number to allow determining dropped frames in consumer
                     frame_number+=1
                     client_socket.sendto(data, udp_address)
                 if recording_folder is not None and (save_next_frame or recording_activated):
