@@ -15,13 +15,11 @@ import glob
 import pickle
 import cv2
 import sys
-import tensorflow as tf
-# from keras.models import load_model
 import serial
 import socket
 from select import select
 from globals_and_utils import *
-from engineering_notation import EngNumber  as eng # only from pip
+from engineering_notation import EngNumber as eng # only from pip
 import collections
 from pathlib import Path
 import random
@@ -37,10 +35,9 @@ except Exception as e:
     print(e)
 
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='consumer: Consumes DVS frames for trixy to process', allow_abbrev=True,
+        description='consumer: Consumes DVS frames to process', allow_abbrev=True,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument(
@@ -54,18 +51,17 @@ if __name__ == '__main__':
 
     address = ("", PORT)
     server_socket.bind(address)
-    model,interpreter, input_details, output_details,model_folder=load_latest_model()
+    model, interpreter, input_details, output_details, model_folder = load_latest_model()
 
     serial_port = args.serial_port
     log.info('opening serial port {} to send commands to finger'.format(serial_port))
     arduino_serial_port = serial.Serial(serial_port, 115200, timeout=5)
 
-    log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to recieve the {IMSIZE}x{IMSIZE} images')
+    log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to receive the {IMSIZE}x{IMSIZE} images')
 
     saved_non_jokers = collections.deque(maxlen=NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER)  # lists of images to save
     Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
     Path(NONJOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
-
 
     def next_path_index(path):
         l = glob.glob(path + '/[0-9]*.png')
@@ -78,7 +74,6 @@ if __name__ == '__main__':
             last3 = last2.split('.')[0]
             next = int(last3) + 1  # strip .png
             return next
-
 
     next_joker_index = next_path_index(JOKERS_FOLDER)
     next_non_joker_index = next_path_index(NONJOKERS_FOLDER)
@@ -95,7 +90,6 @@ if __name__ == '__main__':
 
     log.info('GPU is {}'.format('available' if len(tf.config.list_physical_devices('GPU')) > 0 else 'not available (check tensorflow/cuda setup)'))
 
-
     def show_frame(frame, name, resized_dict):
         """ Show the frame in named cv2 window and handle resizing
 
@@ -110,13 +104,12 @@ if __name__ == '__main__':
             # wait minimally since interp takes time anyhow
             cv2.waitKey(1)
 
-
     last_frame_number=0
     # receive_data=bytearray(UDP_BUFFER_SIZE)
     while True:
         timestr = time.strftime("%Y%m%d-%H%M")
         with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True):
-            with Timer('recieve UDP'):
+            with Timer('receive UDP'):
                 # num_bytes_recieved=0
                 # receive_data=None
                 # tries=0
@@ -141,8 +134,7 @@ if __name__ == '__main__':
                 img_01_float32 = (1. / 255) * np.array(img255, dtype=np.float32)
             with Timer('run CNN'):
                 # pred = model.predict(img[None, :])
-                is_joker, joker_prob, pred=classify_joker_img(img_01_float32, model, interpreter, input_details, output_details)
-
+                is_joker, joker_prob, pred = classify_joker_img(img_01_float32, model, interpreter, input_details, output_details)
 
             if is_joker: # joker
                 arduino_serial_port.write(b'1')
@@ -158,10 +150,10 @@ if __name__ == '__main__':
 
             # save time since frame sent from producer
             dt=time.time()-timestamp
-            with Timer('producer->consumer inference delay',delay=dt, show_hist=True):
+            with Timer('producer->consumer inference delay', delay=dt, show_hist=True):
                 pass
 
-            save_img_255= (img255.squeeze()).astype('uint8')
+            save_img_255 = (img255.squeeze()).astype('uint8')
             if is_joker: # joker
                 # find next name that is not taken yet
                 next_joker_index= write_next_image(JOKERS_FOLDER, next_joker_index, save_img_255)

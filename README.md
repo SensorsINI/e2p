@@ -53,8 +53,7 @@ Lower version should be fine but not fully tested :-)
     ```
  4. In a second terminal run consumer
     ```
-    python -m consumer  arduinoPort
-    example: python -m consumer.py 
+    python -m consumer.py 
     ```
 
 ### 4. Results
