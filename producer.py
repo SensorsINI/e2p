@@ -32,6 +32,8 @@ from pyaer import libcaer
 
 log=my_logger(__name__)
 
+import torch
+from events_contrast_maximization.utils.event_utils import events_to_voxel_torch
 
 def producer(args):
     """ produce frames for consumer
@@ -125,14 +127,23 @@ def producer(args):
             with Timer('overall producer frame rate', numpy_file=numpy_frame_rate_data_file_path , show_hist=True) as timer_overall:
                 with Timer('accumulate DVS'):
                     events = None
-                    while events is None or len(events)<args.num_events:
-                        pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
-                        # assemble 'frame' of EVENT_COUNT events
-                        if num_pol_event>0:
+                    # fixed number
+                    # while events is None or len(events)<args.num_events:
+                    #     pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
+                    #     if num_pol_event>0:
+                    #         if events is None:
+                    #             events=pol_events
+                    #         else:
+                    #             events = np.vstack([events, pol_events]) # otherwise tack new events to end
+                    # fixed duration
+                    while events is None or events[-1, 0] - events[0, 0] < args.duration_events:
+                        pol_events, num_pol_event, _, _, _, _, _, _ = device.get_event()
+                        if num_pol_event > 0:
                             if events is None:
-                                events=pol_events
+                                events = pol_events
                             else:
-                                events = np.vstack([events, pol_events]) # otherwise tack new events to end
+                                events = np.vstack([events, pol_events])  # otherwise tack new events to end
+
                 # log.debug('got {} events (total so far {}/{} events)'
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
                 dtMs = (time.time() - time_last_frame_sent)*1e3
@@ -152,24 +163,34 @@ def producer(args):
                         #     log.warning('available RAM too low, turning off numpy data saving')
 
                 frames_dropped_counter=0
+
+                # naive integration
+                # with Timer('normalization'):
+                #     # if frame is None: # debug timing
+                #         # take DVS coordinates and scale x and y to output frame dimensions using flooring math
+                #         xs=np.floor(events[:,1]*xfac)
+                #         ys=np.floor(events[:,2]*yfac)
+                #         ts=events[:,0]
+                #         if vflow_ppus!=0:
+                #             dt=ts-t[0]
+                #             ys=ys-vflow_ppus*dt
+                #         frame, _, _ = np.histogram2d(ys, xs, bins=(IMSIZE, IMSIZE), range=histrange)
+                #         # fmax_count=np.max(frame) # todo check if fmax is frequenty exceeded, increase contrast
+                #         frame[frame > args.clip_count]=args.clip_count
+                #         frame= (255. / args.clip_count) * frame # max pixel will have value 255
+
+                # voxelization for network inference
                 with Timer('normalization'):
-                    # if frame is None: # debug timing
-                        # take DVS coordinates and scale x and y to output frame dimensions using flooring math
-                        xs=np.floor(events[:,1]*xfac)
-                        ys=np.floor(events[:,2]*yfac)
-                        ts=events[:,0]
-                        if vflow_ppus!=0:
-                            dt=ts-t[0]
-                            ys=ys-vflow_ppus*dt
-                        frame, _, _ = np.histogram2d(ys, xs, bins=(IMSIZE, IMSIZE), range=histrange)
-                        # fmax_count=np.max(frame) # todo check if fmax is frequenty exceeded, increase contrast
-                        frame[frame > args.clip_count]=args.clip_count
-                        frame= (255. / args.clip_count) * frame # max pixel will have value 255
+                    xs = torch.from_numpy(events[:, 1].astype(np.float32))
+                    ys = torch.from_numpy(events[:, 2].astype(np.float32))
+                    ts = torch.from_numpy((events[:, 0] - events[0, 1]).astype(np.float32))
+                    ps = torch.from_numpy(events[:, 3].astype(np.float32))
+                    voxel = events_to_voxel_torch(xs, ys, ts, ps, args.num_bins, sensor_size=args.sensor_resolution)
+
+
 
                 # statistics
-                # focc=np.count_nonzero(frame)
-                frame=frame.astype('uint8')
-                # log.debug('from {} events, frame has occupancy {}% max_count {:.1f} events'.format(len(events), eng((100.*focc)/npix), fmax_count))
+                frame = frame.astype('uint8')
 
                 with Timer('send frame'):
                     time_last_frame_sent=time.time()
@@ -240,6 +261,15 @@ if __name__ == '__main__':
     parser.add_argument(
         "--num_events", type=int, default=EVENT_COUNT_PER_FRAME,
         help="number of events per constant-count DVS frame")
+    parser.add_argument(
+        "--duration_events", type=int, default=EVENT_DURATION,
+        help="duration of events per extraction")
+    parser.add_argument(
+        "--num_bins", type=int, default=NUM_BINS,
+        help="number of bins for event voxel")
+    parser.add_argument(
+        "--sensor_resolution", type=tuple, default=SENSOR_RESOLUTION,
+        help="sensor resolution")
     parser.add_argument(
         "--clip_count", type=int, default=EVENT_COUNT_CLIP_VALUE,
         help="number of events per pixel for full white pixel value")

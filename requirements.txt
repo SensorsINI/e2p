@@ -12,3 +12,4 @@ engineering_notation
 psutil
 pyserial
 pyzmq
+thop

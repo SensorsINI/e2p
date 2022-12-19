@@ -27,11 +27,11 @@ import math
 # from model_ori import model as model_arch
 
 # for train and test new model
-from model.model import *
+# from model.model import *
 # from model import model as model_arch
 # from model import model_mhy as model_arch
 # from model import model_original as model_arch
-from model import model_v as model_arch
+import e2p as model_arch
 # from model import model_ed as model_arch
 # from model.model import ColorNet
 
