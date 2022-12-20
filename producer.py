@@ -167,8 +167,10 @@ def producer(args):
                 with Timer('normalization frame'):
                     # if frame is None: # debug timing
                         # take DVS coordinates and scale x and y to output frame dimensions using flooring math
-                        xs=np.floor(events[:,1]*xfac)
-                        ys=np.floor(events[:,2]*yfac)
+                        # xs=np.floor(events[:,1]*xfac)
+                        # ys=np.floor(events[:,2]*yfac)
+                        xs=events[:,1]
+                        ys=events[:,2]
                         ts=events[:,0]
                         if vflow_ppus!=0:
                             dt=ts-t[0]
@@ -214,11 +216,12 @@ def producer(args):
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
                             voxel_224_01 = voxel_224 / 255.0
-                            voxel_five = cv2.hconcat([voxel_224_01[0], voxel_224_01[1], voxel_224_01[1],
-                                                      voxel_224_01[2], voxel_224_01[3], ])
+                            pad = np.zeros([224, 20])
+                            voxel_five = cv2.hconcat([voxel_224_01[0], pad, voxel_224_01[1], pad, voxel_224_01[2], pad,
+                                                      voxel_224_01[3], pad, voxel_224_01[4]])
                             cv2.imshow('DVS', voxel_five)
                             if not cv2_resized:
-                                cv2.resizeWindow('DVS', 1120, 224)
+                                cv2.resizeWindow('DVS', 2240, 448)
                                 cv2_resized = True
                             k = cv2.waitKey(1) & 0xFF
                             if k == ord('q') or k == ord('x'):

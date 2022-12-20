@@ -48,9 +48,7 @@ Lower version should be fine but not fully tested :-)
 
  3. In first terminal run producer 
     ```
-    python -m producer
     python -m producer --record='test'
-    python -m producer_original --record='test'
     ```
  4. In a second terminal run consumer
     ```
