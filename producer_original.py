@@ -1,12 +1,16 @@
 """
- @Time    : 17.12.22 11:33
+ @Time    : 20.12.22 17:16
  @Author  : Haiyang Mei
  @E-mail  : haiyang.mei@outlook.com
  
  @Project : pdavis_demo
- @File    : producer.py
+ @File    : producer_original.py
  @Function:
  
+"""
+"""
+producer of DVS frames for classification of joker/nonjoker by consumer processs
+Authors: Tobi Delbruck, Yuhuang Hu, Shasha Guo,  Min Liu Oct 2020
 """
 
 import atexit
@@ -23,7 +27,7 @@ import numpy as np
 from tqdm import tqdm
 
 from globals_and_utils import *
-from engineering_notation import EngNumber as eng # only from pip
+from engineering_notation import EngNumber  as eng # only from pip
 import argparse
 import psutil
 
@@ -32,12 +36,11 @@ from pyaer import libcaer
 
 log=my_logger(__name__)
 
-import torch
-from events_contrast_maximization.utils.event_utils import events_to_voxel_torch
 
 
 def producer(args):
     """ produce frames for consumer
+
     :param record: record frames to a folder name record
     """
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -83,6 +86,7 @@ def producer(args):
           device.dvs_has_background_activity_filter)
     print("Color Filter", device.aps_color_filter, type(device.aps_color_filter))
     print(device.aps_color_filter == 1)
+
     # device.start_data_stream()
     assert (device.send_default_config())
     # attempt to set up USB host buffers for acquisition thread to minimize latency
@@ -126,23 +130,14 @@ def producer(args):
             with Timer('overall producer frame rate', numpy_file=numpy_frame_rate_data_file_path , show_hist=True) as timer_overall:
                 with Timer('accumulate DVS'):
                     events = None
-                    # fixed number
-                    # while events is None or len(events)<args.num_events:
-                    #     pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
-                    #     if num_pol_event>0:
-                    #         if events is None:
-                    #             events=pol_events
-                    #         else:
-                    #             events = np.vstack([events, pol_events]) # otherwise tack new events to end
-                    # fixed duration
-                    while events is None or (events[-1, 0] - events[0, 0]) < args.duration_events:
-                        pol_events, num_pol_event, _, _, _, _, _, _ = device.get_event()
-                        if num_pol_event > 0:
+                    while events is None or len(events)<args.num_events:
+                        pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
+                        # assemble 'frame' of EVENT_COUNT events
+                        if  num_pol_event>0:
                             if events is None:
-                                events = pol_events
+                                events=pol_events
                             else:
-                                events = np.vstack([events, pol_events])  # otherwise tack new events to end
-
+                                events = np.vstack([events, pol_events]) # otherwise tack new events to end
                 # log.debug('got {} events (total so far {}/{} events)'
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
                 dtMs = (time.time() - time_last_frame_sent)*1e3
@@ -162,9 +157,7 @@ def producer(args):
                         #     log.warning('available RAM too low, turning off numpy data saving')
 
                 frames_dropped_counter=0
-
-                # naive integration
-                with Timer('normalization frame'):
+                with Timer('normalization'):
                     # if frame is None: # debug timing
                         # take DVS coordinates and scale x and y to output frame dimensions using flooring math
                         xs=np.floor(events[:,1]*xfac)
@@ -174,37 +167,25 @@ def producer(args):
                             dt=ts-t[0]
                             ys=ys-vflow_ppus*dt
                         frame, _, _ = np.histogram2d(ys, xs, bins=(IMSIZE, IMSIZE), range=histrange)
-                        # frame, _, _ = np.histogram2d(ys, xs, bins=(257, 255), range=histrange)
                         # fmax_count=np.max(frame) # todo check if fmax is frequenty exceeded, increase contrast
                         frame[frame > args.clip_count]=args.clip_count
-                        frame= ((255. / args.clip_count) * frame).astype('uint8') # max pixel will have value 255
+                        frame= (255. / args.clip_count) * frame # max pixel will have value 255
 
-                # voxelization for network inference
-                with Timer('normalization voxel'):
-                    xs = torch.from_numpy(events[:, 1].astype(np.float32))
-                    ys = torch.from_numpy(events[:, 2].astype(np.float32))
-                    ts = torch.from_numpy((events[:, 0] - events[0, 1]).astype(np.float32))
-                    ps = torch.from_numpy((events[:, 3] * 2 - 1).astype(np.float32))
-                    voxel = events_to_voxel_torch(xs, ys, ts, ps, args.num_bins, sensor_size=args.sensor_resolution)
-                    voxel = voxel.numpy()
-                    voxel = (((voxel + 1) / 2) * 255).astype('uint8')
-                    voxel_224 = voxel[:, 0:224, 0:224]
+                # statistics
+                # focc=np.count_nonzero(frame)
+                frame=frame.astype('uint8')
+                # log.debug('from {} events, frame has occupancy {}% max_count {:.1f} events'.format(len(events), eng((100.*focc)/npix), fmax_count))
 
                 with Timer('send frame'):
                     time_last_frame_sent=time.time()
-                    # data = pickle.dumps((frame_number, time_last_frame_sent, voxel[0, :, :])) # send frame_number to allow determining dropped frames in consumer
-                    # data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
-                    for x in range(voxel_224.shape[0]):
-                        data = pickle.dumps((frame_number, time_last_frame_sent, x, voxel_224[x, :, :]))
-                        frame_number+=1
-                        client_socket.sendto(data, udp_address)
-
+                    data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
+                    frame_number+=1
+                    client_socket.sendto(data, udp_address)
                 if recording_folder is not None and (save_next_frame or recording_activated):
-                    recording_frame_number=write_next_image(recording_folder, recording_frame_number, frame)
-                    print('.', end='')
+                    recording_frame_number=write_next_image(recording_folder,recording_frame_number,frame)
+                    print('.',end='')
                     if recording_frame_number%80==0:
                         print('')
-
                 if SHOW_DVS_OUTPUT:
                     t=time.time()
                     if t-last_cv2_frame_time>1./MAX_SHOWN_DVS_FRAME_RATE_HZ:
@@ -213,30 +194,27 @@ def producer(args):
                             # min = np.min(frame)
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
-                            voxel_224_01 = voxel_224 / 255.0
-                            voxel_five = cv2.hconcat([voxel_224_01[0], voxel_224_01[1], voxel_224_01[1],
-                                                      voxel_224_01[2], voxel_224_01[3], ])
-                            cv2.imshow('DVS', voxel_five)
+                            cv2.imshow('DVS', 1-(1/256.)*frame)
                             if not cv2_resized:
-                                cv2.resizeWindow('DVS', 1120, 224)
+                                cv2.resizeWindow('DVS', 600, 600)
                                 cv2_resized = True
-                            k = cv2.waitKey(1) & 0xFF
-                            if k == ord('q') or k == ord('x'):
+                            k=    cv2.waitKey(1) & 0xFF
+                            if k== ord('q') or k== ord('x'):
                                 if recording_folder is not None:
                                     log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
                                 print_timing_info()
                                 break
-                            elif k == ord('p'):
+                            elif k==ord('p'):
                                 print_timing_info()
-                            elif k == ord(' ') and (spacebar_records or space_toggles_recording):
+                            elif k==ord(' ') and (spacebar_records or space_toggles_recording):
                                 if spacebar_records:
                                     save_next_frame=True
                                 else:
                                     recording_activated=not recording_activated
                                     if recording_activated:
-                                        print('recording activated - use space to stop recording\n')
+                                        print('recording activated - use space to stop recording')
                                     else:
-                                        print('recording paused - use space to start recording\n')
+                                        print('recording paused - use space to start recording')
                                     save_next_frame=recording_activated
                             else:
                                 save_next_frame=(recording_activated or (not spacebar_records and not space_toggles_recording))
@@ -257,6 +235,7 @@ def producer(args):
         cleanup()
 
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='producer: Generates DVS frames for trixy to process in consumer', allow_abbrev=True,
@@ -268,25 +247,16 @@ if __name__ == '__main__':
         "--num_events", type=int, default=EVENT_COUNT_PER_FRAME,
         help="number of events per constant-count DVS frame")
     parser.add_argument(
-        "--duration_events", type=int, default=EVENT_DURATION,
-        help="duration of events per extraction")
-    parser.add_argument(
-        "--num_bins", type=int, default=NUM_BINS,
-        help="number of bins for event voxel")
-    parser.add_argument(
-        "--sensor_resolution", type=tuple, default=SENSOR_RESOLUTION,
-        help="sensor resolution")
-    parser.add_argument(
         "--clip_count", type=int, default=EVENT_COUNT_CLIP_VALUE,
         help="number of events per pixel for full white pixel value")
     parser.add_argument(
         "--spacebar_records", action='store_true',
         help="only record when spacebar pressed down")
     parser.add_argument(
-        "--space_toggles_recording", action='store_true', default=True,
+        "--space_toggles_recording", action='store_true',
         help="space toggles recording on/off")
     parser.add_argument(
-        "--numpy", action='store_true', default=True,
+        "--numpy", action='store_true',
         help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")
     args = parser.parse_args()
 

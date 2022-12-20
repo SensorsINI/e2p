@@ -50,6 +50,7 @@ Lower version should be fine but not fully tested :-)
     ```
     python -m producer
     python -m producer --record='test'
+    python -m producer_original --record='test'
     ```
  4. In a second terminal run consumer
     ```
