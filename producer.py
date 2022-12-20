@@ -35,9 +35,9 @@ log=my_logger(__name__)
 import torch
 from events_contrast_maximization.utils.event_utils import events_to_voxel_torch
 
+
 def producer(args):
     """ produce frames for consumer
-
     :param record: record frames to a folder name record
     """
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -144,6 +144,11 @@ def producer(args):
                             else:
                                 events = np.vstack([events, pol_events])  # otherwise tack new events to end
 
+                    print(events.shape)
+                    print(events[-1, 0] - events[0, 0])
+                    # print(events[0:10, :])
+                    # exit(0)
+
                 # log.debug('got {} events (total so far {}/{} events)'
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
                 dtMs = (time.time() - time_last_frame_sent)*1e3
@@ -165,41 +170,49 @@ def producer(args):
                 frames_dropped_counter=0
 
                 # naive integration
-                # with Timer('normalization'):
-                #     # if frame is None: # debug timing
-                #         # take DVS coordinates and scale x and y to output frame dimensions using flooring math
-                #         xs=np.floor(events[:,1]*xfac)
-                #         ys=np.floor(events[:,2]*yfac)
-                #         ts=events[:,0]
-                #         if vflow_ppus!=0:
-                #             dt=ts-t[0]
-                #             ys=ys-vflow_ppus*dt
-                #         frame, _, _ = np.histogram2d(ys, xs, bins=(IMSIZE, IMSIZE), range=histrange)
-                #         # fmax_count=np.max(frame) # todo check if fmax is frequenty exceeded, increase contrast
-                #         frame[frame > args.clip_count]=args.clip_count
-                #         frame= (255. / args.clip_count) * frame # max pixel will have value 255
+                with Timer('normalization frame'):
+                    # if frame is None: # debug timing
+                        # take DVS coordinates and scale x and y to output frame dimensions using flooring math
+                        xs=np.floor(events[:,1]*xfac)
+                        ys=np.floor(events[:,2]*yfac)
+                        ts=events[:,0]
+                        if vflow_ppus!=0:
+                            dt=ts-t[0]
+                            ys=ys-vflow_ppus*dt
+                        frame, _, _ = np.histogram2d(ys, xs, bins=(IMSIZE, IMSIZE), range=histrange)
+                        # frame, _, _ = np.histogram2d(ys, xs, bins=(257, 255), range=histrange)
+                        # fmax_count=np.max(frame) # todo check if fmax is frequenty exceeded, increase contrast
+                        frame[frame > args.clip_count]=args.clip_count
+                        frame= ((255. / args.clip_count) * frame).astype('uint8') # max pixel will have value 255
 
                 # voxelization for network inference
-                with Timer('normalization'):
+                with Timer('normalization voxel'):
                     xs = torch.from_numpy(events[:, 1].astype(np.float32))
                     ys = torch.from_numpy(events[:, 2].astype(np.float32))
                     ts = torch.from_numpy((events[:, 0] - events[0, 1]).astype(np.float32))
                     ps = torch.from_numpy(events[:, 3].astype(np.float32))
                     voxel = events_to_voxel_torch(xs, ys, ts, ps, args.num_bins, sensor_size=args.sensor_resolution)
                     voxel = (voxel.numpy()*255).astype('uint8')
+                    voxel_224 = voxel[:, 0:224, 0:224]
 
                 # statistics
-                frame = frame.astype('uint8')
-
+                # frame = frame.astype('uint8')
+                # print(frame.shape)
+                # print(voxel.shape)
+                # print(voxel_224.shape)
                 with Timer('send frame'):
                     time_last_frame_sent=time.time()
-                    data = pickle.dumps((frame_number, time_last_frame_sent, frame, voxel)) # send frame_number to allow determining dropped frames in consumer
+                    # data = pickle.dumps((frame_number, time_last_frame_sent, voxel[0, :, :])) # send frame_number to allow determining dropped frames in consumer
+                    # data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
+                    # for x in range(voxel_224.shape[0]):
+                    #     data = pickle.dumps((frame_number, time_last_frame_sent, x, voxel_224[x, :, :]))
+                    data = pickle.dumps((frame_number, time_last_frame_sent, events))
                     frame_number+=1
                     client_socket.sendto(data, udp_address)
                 if recording_folder is not None and (save_next_frame or recording_activated):
                     recording_frame_number=write_next_image(recording_folder, recording_frame_number, frame)
                     print('.', end='')
-                    if recording_frame_number%80==0:
+                    if recording_frame_number%100==0:
                         print('')
                 if SHOW_DVS_OUTPUT:
                     t=time.time()
@@ -209,9 +222,12 @@ def producer(args):
                             # min = np.min(frame)
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
-                            cv2.imshow('DVS', 1-(1/256.)*frame)
+                            voxel_224_01 = voxel_224 / 255.0
+                            voxel_five = cv2.hconcat([voxel_224_01[0], voxel_224_01[1], voxel_224_01[1],
+                                                      voxel_224_01[2], voxel_224_01[3], ])
+                            cv2.imshow('DVS', voxel_five)
                             if not cv2_resized:
-                                cv2.resizeWindow('DVS', 600, 600)
+                                cv2.resizeWindow('DVS', 1120, 224)
                                 cv2_resized = True
                             k = cv2.waitKey(1) & 0xFF
                             if k == ord('q') or k == ord('x'):
@@ -234,6 +250,7 @@ def producer(args):
                             else:
                                 save_next_frame=(recording_activated or (not spacebar_records and not space_toggles_recording))
         if saved_events is not None and recording_folder is not None and len(saved_events)>0:
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             nevents=0
             for a in saved_events:
                 nevents+=len(a)

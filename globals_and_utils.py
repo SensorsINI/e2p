@@ -80,13 +80,15 @@ else:
 LOGGING_LEVEL = logging.INFO
 PORT = 12000  # UDP port used to send frames from producer to consumer
 IMSIZE = 224  # input image size, must match model
+# IMSIZE_BUFFER = (260, 346)  # input image size, must match model
 UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / math.log(2))))
+# UDP_BUFFER_SIZE = 131072
 
 EVENT_COUNT_PER_FRAME = 2300  # events per frame
 EVENT_DURATION = 5000  # events per frame
 NUM_BINS = 5 # number of bins for event voxel
 SENSOR_RESOLUTION = (260, 346) # sensor resoltuion
-EVENT_COUNT_CLIP_VALUE = 3  # full count value for colleting histograms of DVS events
+EVENT_COUNT_CLIP_VALUE = 3  # full count value for collecting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
 MIN_PRODUCER_FRAME_INTERVAL_MS=10.0 # inference takes about 3ms and normalization takes 1ms, hence at least 2ms
         # limit rate that we send frames to about what the GPU can manage for inference time
