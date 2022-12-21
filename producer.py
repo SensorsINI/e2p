@@ -126,22 +126,14 @@ def producer(args):
             with Timer('overall producer frame rate', numpy_file=numpy_frame_rate_data_file_path , show_hist=True) as timer_overall:
                 with Timer('accumulate DVS'):
                     events = None
-                    # fixed number
                     # while events is None or len(events)<args.num_events:
-                    #     pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
-                    #     if num_pol_event>0:
-                    #         if events is None:
-                    #             events=pol_events
-                    #         else:
-                    #             events = np.vstack([events, pol_events]) # otherwise tack new events to end
-                    # fixed duration
                     while events is None or (events[-1, 0] - events[0, 0]) < args.duration_events:
-                        pol_events, num_pol_event, _, _, _, _, _, _ = device.get_event()
-                        if num_pol_event > 0:
+                        pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
+                        if num_pol_event>0:
                             if events is None:
-                                events = pol_events
+                                events=pol_events
                             else:
-                                events = np.vstack([events, pol_events])  # otherwise tack new events to end
+                                events = np.vstack([events, pol_events]) # otherwise tack new events to end
 
                 # log.debug('got {} events (total so far {}/{} events)'
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))

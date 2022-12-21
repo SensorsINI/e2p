@@ -23,11 +23,8 @@ import collections
 from pathlib import Path
 import random
 
-from e2p import V16 as Model
-
 # for network inference
 import torch
-from inference import legacy_compatibility, load_model
 from utils.util import torch2cv2
 
 log=my_logger(__name__)
@@ -38,18 +35,72 @@ try:
 except Exception as e:
     print(e)
 
+# from inference.py
+import e2p as model_arch
+from utils.henri_compatible import make_henri_compatible
+from parse_config import ConfigParser
+
+model_info = {}
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+def legacy_compatibility(args, checkpoint):
+    assert not (args.e2vid and args.firenet_legacy)
+    if args.e2vid:
+        args.legacy_norm = True
+        final_activation = 'sigmoid'
+    elif args.firenet_legacy:
+        args.legacy_norm = True
+        final_activation = ''
+    else:
+        return args, checkpoint
+    # Make compatible with Henri saved models
+    if not isinstance(checkpoint.get('config', None), ConfigParser) or args.e2vid or args.firenet_legacy:
+        checkpoint = make_henri_compatible(checkpoint, final_activation)
+    if args.firenet_legacy:
+        checkpoint['config']['arch']['type'] = 'FireNet_legacy'
+    return args, checkpoint
+
+
+def load_model(checkpoint):
+    config = checkpoint['config']
+    print(config['arch'])
+    state_dict = checkpoint['state_dict']
+
+    try:
+        model_info['num_bins'] = config['arch']['args']['unet_kwargs']['num_bins']
+        print(model_info['num_bins'])
+    except KeyError:
+        model_info['num_bins'] = config['arch']['args']['num_bins']
+    logger = config.get_logger('test')
+
+    # build model architecture
+    model = config.init_obj('arch', model_arch)
+    logger.info(model)
+    if config['n_gpu'] > 1:
+        model = torch.nn.DataParallel(model)
+    model.load_state_dict(state_dict)
+    print('Load my trained weights succeed!')
+
+    model = model.to(device)
+    model.eval()
+    # if args.color:
+    #     model = ColorNet(model)
+    for param in model.parameters():
+        param.requires_grad = False
+
+    return model
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='consumer: Consumes DVS frames to process', allow_abbrev=True,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--checkpoint_path', required=True, type=str, help='path to latest checkpoint (default: None)')
-    parser.add_argument('--events_file_path', required=True, type=str,
-                        help='path to events (HDF5)')
+    parser.add_argument('--checkpoint_path', type=str, default='e2p.pth', help='path to latest checkpoint')
     parser.add_argument('--output_folder', default="/tmp/output", type=str,
                         help='where to save outputs to')
-    parser.add_argument('--height', required=True, type=int, default=260,
+    parser.add_argument('--height', type=int, default=260,
                         help='sensor resolution: height')
-    parser.add_argument('--width', required=True, type=int, default=346,
+    parser.add_argument('--width', type=int, default=346,
                         help='sensor resolution: width')
     parser.add_argument('--device', default='0', type=str,
                         help='indices of GPUs to enable')
@@ -103,6 +154,7 @@ if __name__ == '__main__':
     server_socket.bind(address)
 
     # initial network model
+    print(args.checkpoint_path)
     checkpoint = torch.load(args.checkpoint_path)
     args, checkpoint = legacy_compatibility(args, checkpoint)
     model = load_model(checkpoint)
@@ -144,34 +196,53 @@ if __name__ == '__main__':
         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
         cv2.imshow(name, frame)
         if not (name in resized_dict):
-            cv2.resizeWindow(name, 300, 300)
+            cv2.resizeWindow(name, 1800, 600)
             resized_dict[name] = True
             # wait minimally since interp takes time anyhow
             cv2.waitKey(1)
 
     last_frame_number=0
+    voxel_five_float32 = np.zeros((5, 224, 224))
+    c = 0
     while True:
+        # todo: reset state after a long period
+        model.reset_states_i()
+        model.reset_states_a()
+        model.reset_states_d()
         timestr = time.strftime("%Y%m%d-%H%M")
         with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True):
             with Timer('receive UDP'):
                 receive_data = server_socket.recv(UDP_BUFFER_SIZE)
 
             with Timer('unpickle and normalize/reshape'):
-                (frame_number, timestamp, img255, voxel) = pickle.loads(receive_data)
-                dropped_frames=frame_number-last_frame_number-1
-                if dropped_frames>0:
-                    log.warning(f'Dropped {dropped_frames} frames from producer')
-                last_frame_number=frame_number
-                img_01_float32 = (1. / 255) * np.array(img255, dtype=np.float32)
-                voxel_01_float32 = (1. / 255) * np.array(voxel, dtype=np.float32)
-            with Timer('run CNN'):
-                # pred = model.predict(img[None, :])
-                output = model(torch.from_numpy(voxel_01_float32))
-                intensity = torch2cv2(output['i'])
-                aolp = torch2cv2(output['a'])
-                dolp = torch2cv2(output['d'])
-                image = cv2.hconcat([intensity, aolp, dolp])
-                show_frame(image, 'polarization', cv2_resized)
+                (frame_number, timestamp, x, voxel) = pickle.loads(receive_data)
+                if x == 0:
+                    voxel_five_float32 = np.zeros((1, 5, 224, 224))
+                    c = 0
+                # todo: need to check
+                # dropped_frames=frame_number-last_frame_number-1
+                # if dropped_frames>0:
+                #     log.warning(f'Dropped {dropped_frames} frames from producer')
+                # last_frame_number=frame_number
+                voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1
+                voxel_five_float32[:, x, :, :] = voxel_float32
+                c += 1
+            if c == 5:
+                with Timer('run CNN'):
+                    output = model(torch.from_numpy(voxel_five_float32).float().to(device))
+                    intensity = torch2cv2(output['i'])
+                    aolp = torch2cv2(output['a'])
+                    dolp = torch2cv2(output['d'])
+
+                    max = np.max(intensity)
+                    min = np.min(intensity)
+                    intensity = (intensity - min) / (max - min) * 255
+                    intensity = np.repeat(intensity[:, :, None], 3, axis=2).astype(np.uint8)
+                    aolp = cv2.applyColorMap(aolp, cv2.COLORMAP_HSV)
+                    dolp = cv2.applyColorMap(dolp, cv2.COLORMAP_HOT)
+
+                    image = cv2.hconcat([intensity, aolp, dolp])
+                    show_frame(image, 'polarization', cv2_resized)
 
             # save time since frame sent from producer
             dt=time.time()-timestamp

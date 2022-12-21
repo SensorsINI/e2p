@@ -8,11 +8,9 @@
  @Function:
  
 """
-import torch
-import torch.nn as nn
 
-from .base.base_model import BaseModel
-from .submodules import *
+from base_model import BaseModel
+from submodules import *
 
 
 class V16(BaseModel):
