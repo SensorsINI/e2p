@@ -14,12 +14,14 @@
 The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision sensor that reports both conventional polarization frames and asynchronous, continuously per-pixel polarization brightness changes (polarization events) with **_fast temporal resolution_** and **_large dynamic range_**.
 
 ### 2. Requirements
+#### 2.1. pip
 * create virtual environement
   ```
   mkvirtualenv pdavis_demo
   ```
 * Python 3.8.10, CUDA 11.3, PyTorch == 1.11.0+cu113, TorchVision == 0.12.0+cu113
   ```
+  workon pdavis_demo
   pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
   ```
 * install pyaer
@@ -39,6 +41,36 @@ The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision
   ```
   pip install -r requirements.txt
   ```
+  
+#### 2.2. conda
+* create virtual environement
+  ```
+  conda create --name pdavis_demo python=3.8
+  conda activate pdavis_demo
+  ```
+* Python 3.8.10, CUDA 11.3, PyTorch == 1.11.0+cu113, TorchVision == 0.12.0+cu113
+  ```
+  conda install -c "nvidia/label/cuda-11.3.1" cuda
+  conda install pytorch==1.11.0 torchvision==0.12.0 torchaudio==0.11.0 cudatoolkit=11.3 -c pytorch
+  ```
+* install pyaer
+  ```
+  sudo apt-get update
+  sudo apt-get install build-essential pkg-config libusb-1.0-0-dev
+  git clone https://gitlab.com/inivation/dv/libcaer.git
+  cd libcaer
+  git checkout e68c3b4c115f59d5fd030fd44db12c702dddc3a5
+  sudo apt install cmake
+  cmake -DCMAKE_INSTALL_PREFIX=/usr . -G "MinGW Makefiles"
+  make -j
+  sudo make install
+  pip install pyaer
+  ```
+* install other dependencies
+  ```
+  pip install -r requirements.txt
+  ```
+
 
 Lower version should be fine but not fully tested :-)
 
