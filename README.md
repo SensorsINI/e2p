@@ -83,7 +83,7 @@ Lower version should be fine but not fully tested :-)
     ```
  4. In a second terminal run consumer
     ```
-    python -m consumer.py 
+    python -m consumer
     ```
 
 ### 4. Results
