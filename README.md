@@ -14,7 +14,7 @@
 The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision sensor that reports both conventional polarization frames and asynchronous, continuously per-pixel polarization brightness changes (polarization events) with **_fast temporal resolution_** and **_large dynamic range_**.
 
 ### 2. Requirements
-#### 2.1. pip
+#### 2.1. Ubuntu
 * create virtual environement
   ```
   mkvirtualenv pdavis_demo
@@ -42,8 +42,8 @@ The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision
   pip install -r requirements.txt
   ```
   
-#### 2.2. conda
-* create virtual environement
+#### 2.2. Windows
+* create virtual environment
   ```
   conda create --name pdavis_demo python=3.8
   conda activate pdavis_demo
@@ -70,7 +70,6 @@ The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision
   ```
   pip install -r requirements.txt
   ```
-
 
 Lower version should be fine but not fully tested :-)
 
