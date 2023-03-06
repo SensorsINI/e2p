@@ -15,7 +15,8 @@ The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision
 
 ### 2. Requirements
 #### 2.1. Ubuntu
-* create virtual environement
+From terminal
+* create virtual environement. 
   ```
   mkvirtualenv pdavis_demo
   ```
@@ -24,7 +25,7 @@ The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision
   workon pdavis_demo
   pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
   ```
-* install pyaer
+* install libcear
   ```
   sudo apt-get update
   sudo apt-get install build-essential pkg-config libusb-1.0-0-dev
@@ -35,15 +36,17 @@ The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision
   cmake -DCMAKE_INSTALL_PREFIX=/usr .
   make -j
   sudo make install
-  pip install pyaer
   ```
+* build pyaer (needed because pyaer master is broken at this time)
+ 
+See 
 * install other dependencies
   ```
   pip install -r requirements.txt
   ```
   
 #### 2.2. Windows
-* create virtual environment
+* Create virtual environment. From terminal
   ```
   conda create --name pdavis_demo python=3.8
   conda activate pdavis_demo
@@ -74,15 +77,15 @@ The polarization event camera PDAVIS is a novel bio-inspired neuromorphic vision
 Lower version should be fine but not fully tested :-)
 
 ### 3. Run
- 1. Download pre-trained polarization reconstruction model `e2p.pth` at [here](https://github.com/SensorsINI/pdavis_demo).
+ 1. The pretrained polarization reconstruction model `e2p.pth` at [here](https://github.com/SensorsINI/pdavis_demo) should already be at the root of pdavis_demo.
  2. Connect hardware: PDAVIS to USB.
 
  3. In first terminal run producer 
-    ```
-    python -m producer --record='test'
+    ```bash
+    python -m producer --record='test' # optional --record records output to folder 'test' in location specified 
     ```
  4. In a second terminal run consumer
-    ```
+    ```bash
     python -m consumer
     ```
 

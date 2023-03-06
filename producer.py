@@ -254,11 +254,11 @@ def producer(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='producer: Generates DVS frames for trixy to process in consumer', allow_abbrev=True,
+        description='producer: Generates DVS frames for pdavis_demo to process in consumer', allow_abbrev=True,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         "--record", type=str, default=None,
-        help="record DVS frames into folder DATA_FOLDER/collected/<name>")
+        help=f"record DVS frames into folder {os.path.join(DATA_FOLDER, 'recordings','<name>')}")
     parser.add_argument(
         "--num_events", type=int, default=EVENT_COUNT_PER_FRAME,
         help="number of events per constant-count DVS frame")
