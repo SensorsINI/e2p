@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="pdavis demo" type="CompoundRunConfigurationType">
+    <toRun name="consumer" type="PythonConfigurationType" />
+    <toRun name="producer" type="PythonConfigurationType" />
+    <method v="2" />
+  </configuration>
+</component>

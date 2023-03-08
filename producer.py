@@ -30,7 +30,8 @@ import psutil
 from pyaer.davis import DAVIS
 from pyaer import libcaer
 
-log=my_logger(__name__)
+from utils.get_logger import get_logger
+log=get_logger(__name__)
 
 import torch
 from events_contrast_maximization.utils.event_utils import events_to_voxel_torch
@@ -42,31 +43,11 @@ def producer(args):
     """
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_address = ('', PORT)
-
-    device = DAVIS(noise_filter=True)
     recording_folder = None
     recording_frame_number = 0
 
-    def cleanup():
-        log.info('closing {}'.format(device))
-        device.shutdown()
-        cv2.destroyAllWindows()
-        if recording_folder is not None:
-            log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
-
-    atexit.register(cleanup)
-    record=args.record
-    spacebar_records=args.spacebar_records
-    space_toggles_recording=args.space_toggles_recording
-    if space_toggles_recording and spacebar_records:
-        log.error('set either spacebar_records or space_toggles_recording')
-        quit(1)
-    log.info(f'recording to {record} with spacebar_records={spacebar_records} space_toggles_recording={space_toggles_recording} and args {str(args)}')
-    if record is not None:
-        recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
-        log.info(f'recording frames to {recording_folder}')
-        Path(recording_folder).mkdir(parents=True, exist_ok=True)
-
+    # open davis camera, set biases
+    device = DAVIS(noise_filter=True)
     print("DVS USB ID:", device.device_id)
     if device.device_is_master:
         print("DVS is master.")
@@ -93,16 +74,38 @@ def producer(args):
     assert (device.set_config(
         libcaer.CAER_HOST_CONFIG_USB,
         libcaer.CAER_HOST_CONFIG_USB_BUFFER_SIZE,
-        4096))
+        64000))
     assert (device.data_start())
     assert (device.set_config(
         libcaer.CAER_HOST_CONFIG_PACKETS,
         libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
-        4000)) # set max interval to this value in us. Set to not produce too many packets/sec here, not sure about reasoning
+        10000)) # set max interval to this value in us. Set to not produce too many packets/sec here, not sure about reasoning
     assert (device.set_data_exchange_blocking())
 
     # setting bias after data stream started
     device.set_bias_from_json("./configs/davis346_config.json")
+
+    def cleanup():
+        log.info('closing {}'.format(device))
+        device.shutdown()
+        cv2.destroyAllWindows()
+        if recording_folder is not None:
+            log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
+
+    atexit.register(cleanup)
+    record=args.record
+    spacebar_records=args.spacebar_records
+    space_toggles_recording=args.space_toggles_recording
+    if space_toggles_recording and spacebar_records:
+        log.error('set either --spacebar_records or --space_toggles_recording')
+        quit(1)
+    log.info(f'recording to {record} with spacebar_records={spacebar_records} space_toggles_recording={space_toggles_recording} and args {str(args)}')
+    if record is not None:
+        recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
+        log.info(f'recording frames to {recording_folder}')
+        Path(recording_folder).mkdir(parents=True, exist_ok=True)
+
+
     xfac = float(IMSIZE) / device.dvs_size_X
     yfac = float(IMSIZE) / device.dvs_size_Y
     histrange = [(0, v) for v in (IMSIZE, IMSIZE)]  # allocate DVS frame histogram to desired output size
@@ -118,13 +121,14 @@ def producer(args):
     saved_events=[]
 
     vflow_ppus=0 # estimate vertical flow, pixels per microsecond, positive.  Does not really help since mainly informative frames are when card is exposed
+    print_key_help()
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
         numpy_frame_rate_data_file_path = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
         while True:
 
             with Timer('overall producer frame rate', numpy_file=numpy_frame_rate_data_file_path , show_hist=True) as timer_overall:
-                with Timer('accumulate DVS'):
+                with Timer('accumulating DVS events'):
                     events = None
                     # while events is None or len(events)<args.num_events:
                     while events is None or (events[-1, 0] - events[0, 0]) < args.duration_events:
@@ -142,8 +146,8 @@ def producer(args):
                     log.debug(f'frame #{frames_dropped_counter} after only {dtMs:.3f}ms, discarding to collect newer frame')
                     frames_dropped_counter+=1
                     continue # just collect another frame since it will be more timely
-
-                log.debug(f'after dropping {frames_dropped_counter} frames, got one after {dtMs:.1f}ms')
+                if frames_dropped_counter>0:
+                    log.warning(f'after dropping {frames_dropped_counter} frames, got one after {dtMs:.1f}ms')
                 if args.numpy:
                     if saved_events is None:
                         saved_events = pol_events
@@ -156,7 +160,7 @@ def producer(args):
                 frames_dropped_counter=0
 
                 # naive integration
-                with Timer('normalization frame'):
+                with Timer('normalizing frame'):
                     # if frame is None: # debug timing
                         # take DVS coordinates and scale x and y to output frame dimensions using flooring math
                         # xs=np.floor(events[:,1]*xfac)
@@ -174,7 +178,7 @@ def producer(args):
                         frame= ((255. / args.clip_count) * frame).astype('uint8') # max pixel will have value 255
 
                 # voxelization for network inference
-                with Timer('normalization voxel'):
+                with Timer('normalizing voxel'):
                     xs = torch.from_numpy(events[:, 1].astype(np.float32))
                     ys = torch.from_numpy(events[:, 2].astype(np.float32))
                     ts = torch.from_numpy((events[:, 0] - events[0, 1]).astype(np.float32))
@@ -184,7 +188,7 @@ def producer(args):
                     voxel = (((voxel + 1) / 2) * 255).astype('uint8')
                     voxel_224 = voxel[:, 0:224, 0:224]
 
-                with Timer('send frame'):
+                with Timer('sending frame'):
                     time_last_frame_sent=time.time()
                     # data = pickle.dumps((frame_number, time_last_frame_sent, voxel[0, :, :])) # send frame_number to allow determining dropped frames in consumer
                     # data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
@@ -208,12 +212,13 @@ def producer(args):
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
                             voxel_224_01 = voxel_224 / 255.0
-                            pad = np.zeros([224, 20])
-                            voxel_five = cv2.hconcat([voxel_224_01[0], pad, voxel_224_01[1], pad, voxel_224_01[2], pad,
-                                                      voxel_224_01[3], pad, voxel_224_01[4]])
-                            cv2.imshow('DVS', voxel_five)
+                            # pad = np.zeros([224, 20])
+                            # voxel_five = cv2.hconcat([voxel_224_01[0], pad, voxel_224_01[1], pad, voxel_224_01[2], pad,
+                            #                           voxel_224_01[3], pad, voxel_224_01[4]])
+                            cv2.imshow('DVS', voxel_224_01[4]) # just show last frame
                             if not cv2_resized:
-                                cv2.resizeWindow('DVS', 2240, 448)
+                                # cv2.resizeWindow('DVS', 2240, 448)
+                                cv2.resizeWindow('DVS', 448, 448)
                                 cv2_resized = True
                             k = cv2.waitKey(1) & 0xFF
                             if k == ord('q') or k == ord('x'):
@@ -233,6 +238,8 @@ def producer(args):
                                     else:
                                         print('recording paused - use space to start recording\n')
                                     save_next_frame=recording_activated
+                            elif k==ord('h') or k==ord('?'):
+                                print_key_help()
                             else:
                                 save_next_frame=(recording_activated or (not spacebar_records and not space_toggles_recording))
         if saved_events is not None and recording_folder is not None and len(saved_events)>0:
@@ -252,6 +259,14 @@ def producer(args):
         cleanup()
 
 
+def print_key_help():
+    print('producer keys to use in cv2 image window:\n'
+          'h or ?: print this help\n'
+          'p: print timing info\n'
+          'space: toggle or turn on while space down recording\n'
+          'q or x or ESC: exit')
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='producer: Generates DVS frames for pdavis_demo to process in consumer', allow_abbrev=True,
@@ -260,11 +275,8 @@ if __name__ == '__main__':
         "--record", type=str, default=None,
         help=f"record DVS frames into folder {os.path.join(DATA_FOLDER, 'recordings','<name>')}")
     parser.add_argument(
-        "--num_events", type=int, default=EVENT_COUNT_PER_FRAME,
-        help="number of events per constant-count DVS frame")
-    parser.add_argument(
         "--duration_events", type=int, default=EVENT_DURATION,
-        help="duration of events per extraction")
+        help="duration of events per voxel frame")
     parser.add_argument(
         "--num_bins", type=int, default=NUM_BINS,
         help="number of bins for event voxel")

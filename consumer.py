@@ -27,7 +27,7 @@ import random
 import torch
 from utils.util import torch2cv2
 
-log=my_logger(__name__)
+log=get_logger()
 
 # Only used in mac osx
 try:
@@ -42,6 +42,13 @@ from parse_config import ConfigParser
 
 model_info = {}
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+def print_key_help():
+    print('producer keys to use in cv2 image window:\n'
+          'h or ?: print this help\n'
+          'p: print timing info\n'
+          'space: toggle or turn on while space down recording\n'
+          'q or x: exit')
 
 
 def legacy_compatibility(args, checkpoint):
@@ -204,6 +211,7 @@ if __name__ == '__main__':
     last_frame_number=0
     voxel_five_float32 = np.zeros((5, 224, 224))
     c = 0
+    print_key_help()
     while True:
         # todo: reset state after a long period
         model.reset_states_i()
@@ -249,5 +257,12 @@ if __name__ == '__main__':
             with Timer('producer->consumer inference delay', delay=dt, show_hist=True):
                 pass
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            k = cv2.waitKey(1) & 0xFF
+            if k == ord('q') or k==ord('x'):
+                print('quitting....')
                 break
+            elif k == ord('h') or k == ord('?'):
+                print_key_help()
+            elif k == ord('p'):
+                print_timing_info()
+

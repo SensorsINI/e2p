@@ -20,6 +20,8 @@ from pathlib import Path
 from subprocess import TimeoutExpired
 import os
 from typing import Optional
+from utils.get_logger import get_logger
+log=get_logger(__name__)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0' # all TF messages
 
@@ -84,17 +86,16 @@ UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / m
 
 # EVENT_COUNT_PER_FRAME = 2300  # events per frame
 EVENT_COUNT_PER_FRAME = 10000  # events per frame
-EVENT_DURATION = 25000  # events per frame
+EVENT_DURATION = 25000  # events per voxel frame
 NUM_BINS = 5 # number of bins for event voxel
-SENSOR_RESOLUTION = (260, 346) # sensor resoltuion
+SENSOR_RESOLUTION = (260, 346) # sensor resolution in pixels, vertical, horizontal
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for collecting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
-MIN_PRODUCER_FRAME_INTERVAL_MS=10.0 # inference takes about 3ms and normalization takes 1ms, hence at least 2ms
+MIN_PRODUCER_FRAME_INTERVAL_MS=3.0 # inference takes about 15ms for PDAVIS reconstruction and normalization takes 3ms
         # limit rate that we send frames to about what the GPU can manage for inference time
         # after we collect sufficient events, we don't bother to normalize and send them unless this time has
         # passed since last frame was sent. That way, we make sure not to flood the consumer
-MAX_SHOWN_DVS_FRAME_RATE_HZ=15 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
-FINGER_OUT_TIME_S = 2  # time to hold out finger when joker is detected
+MAX_SHOWN_DVS_FRAME_RATE_HZ=30 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
 ROOT_DATA_FOLDER= os.path.join(get_download_folder(), 'pdavis_demo_dataset') # does not properly find the Downloads folder under Windows if not on same disk as Windows
 
 DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER, 'data') #/home/tobi/Downloads/pdavis_demo_dataset/data' #'data'  # new samples stored here
@@ -173,42 +174,8 @@ def yes_or_no(question, default='y', timeout=None):
         if reply[0].lower() == 'n':
             return False
 
-class CustomFormatter(logging.Formatter):
-    """Logging Formatter to add colors and count warning / errors"""
-
-    grey = "\x1b[38;21m"
-    yellow = "\x1b[33;21m"
-    red = "\x1b[31;21m"
-    bold_red = "\x1b[31;1m"
-    reset = "\x1b[0m"
-    format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
-
-    FORMATS = {
-        logging.DEBUG: grey + format + reset,
-        logging.INFO: grey + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
-    }
-
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
 
 
-def my_logger(name):
-    # logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-    logger = logging.getLogger(name)
-    logger.setLevel(LOGGING_LEVEL)
-    # create console handler
-    ch = logging.StreamHandler()
-    ch.setFormatter(CustomFormatter())
-    logger.addHandler(ch)
-    return logger
-
-
-log=my_logger(__name__)
 
 timers = {}
 times = {}
@@ -271,26 +238,27 @@ class Timer:
             log.info(s)
 
 def print_timing_info():
-    for k,v in times.items():  # k is the name, v is the list of times
+    print('*********Timing statistics ******')
+    for timer,v in times.items():  # k is the name, v is the list of times
         a = np.array(v)
         timing_mean = np.mean(a)
         timing_std = np.std(a)
         timing_median = np.median(a)
         timing_min = np.min(a)
         timing_max = np.max(a)
-        log.info('== Timing statistics from all Timer ==\n{} n={}: {}s +/- {}s (median {}s, min {}s max {}s)'.format(k, len(a),
+        print('\tTimer {}: n={}: {}s +/- {}s (median {}s, min {}s max {}s)'.format(timer.ljust(40), len(a),
                                                                           eng(timing_mean), eng(timing_std),
                                                                           eng(timing_median), eng(timing_min),
                                                                           eng(timing_max)))
-        if timers[k].numpy_file is not None:
+        if timers[timer].numpy_file is not None:
             try:
-                log.info(f'saving timing data for {k} in numpy file {timers[k].numpy_file}')
+                log.info(f'saving timing data for {timer} in numpy file {timers[timer].numpy_file}')
                 log.info('there are {} times'.format(len(a)))
-                np.save(timers[k].numpy_file, a)
+                np.save(timers[timer].numpy_file, a)
             except Exception as e:
-                log.error(f'could not save numpy file {timers[k].numpy_file}; caught {e}')
+                log.error(f'could not save numpy file {timers[timer].numpy_file}; caught {e}')
 
-        if timers[k].show_hist:
+        if timers[timer].show_hist:
 
             def plot_loghist(x, bins):
                 hist, bins = np.histogram(x, bins=bins) # histogram x linearly
@@ -307,7 +275,7 @@ def print_timing_info():
                 plot_loghist(dt,bins=100)
                 plt.xlabel('interval[ms]')
                 plt.ylabel('frequency')
-                plt.title(k)
+                plt.title(timer)
                 plt.show()
             except Exception as e:
                 log.error(f'could not plot histogram: got {e}')
