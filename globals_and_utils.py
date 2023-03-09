@@ -85,9 +85,12 @@ IMSIZE = 224  # input image size, must match model
 UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / math.log(2))))
 
 # EVENT_COUNT_PER_FRAME = 2300  # events per frame
-EVENT_COUNT_PER_FRAME = 10000  # events per frame
-EVENT_DURATION = 25000  # events per voxel frame
-NUM_BINS = 5 # number of bins for event voxel
+BIASES_CONFIG_FILE="./configs/davis346_config.json"
+# EVENT_DURATION = 100000  # events per voxel frame
+FLEX_TIME_MODE=True # set default to use constant-count voxel volume, False -> constant-duration
+FRAME_COUNT_EVENTS=50000 # default for constant-count volume entire voxel volume fed to DNN
+FRAME_DURATION_US = 50000  # default for constant-duration entire voxel volume fed to DNN
+NUM_BINS = 5 # number of bins for event voxel (frames), must be 5
 SENSOR_RESOLUTION = (260, 346) # sensor resolution in pixels, vertical, horizontal
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for collecting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment

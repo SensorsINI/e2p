@@ -332,11 +332,11 @@ def events_to_image_torch(xs, ys, ps,
         interpolation=None, padding=True):
     """
     Method to turn event tensor to image. Allows for bilinear interpolation.
-        :param xs: tensor of x coords of events
-        :param ys: tensor of y coords of events
-        :param ps: tensor of event polarities/weights
-        :param device: the device on which the image is. If none, set to events device
-        :param sensor_size: the size of the image sensor/output image
+        :param xs: tensor of x coords of events.
+        :param ys: tensor of y coords of events.
+        :param ps: tensor of event polarities/weights.
+        :param device: the device on which the image is. If none, set to events device.
+        :param sensor_size: the size of the image sensor/output image as int tuple (height, width).
         :param clip_out_of_range: if the events go beyond the desired image size,
             clip the events to fit into the image
         :param interpolation: which interpolation to use. Options=None,'bilinear'
@@ -468,25 +468,25 @@ def events_to_voxel_torch(xs, ys, ts, ps, B, device=None, sensor_size=(260, 346)
     Turn set of events to a voxel grid tensor, using temporal bilinear interpolation
     Parameters
     ----------
-    xs : list of event x coordinates (torch tensor)
-    ys : list of event y coordinates (torch tensor)
-    ts : list of event timestamps (torch tensor)
-    ps : list of event polarities (torch tensor)
-    B : number of bins in output voxel grids (int)
-    device : device to put voxel grid. If left empty, same device as events
-    sensor_size : the size of the event sensor/output voxels
-    temporal_bilinear : whether the events should be naively
-        accumulated to the voxels (faster), or properly
-        temporally distributed
+    xs : list of event x coordinates (torch tensor).
+    ys : list of event y coordinates (torch tensor).
+    ts : list of event timestamps (torch tensor).
+    ps : list of event polarities (torch tensor).
+    B : number of bins in output voxel grids (int).
+    device : device to put voxel grid. If left empty, same device as events.
+    sensor_size : the size of the event sensor/output voxels as int tuple (height, width).
+    temporal_bilinear : whether the events are properly
+        temporally distributed (True), or are naively
+        accumulated to the voxels (faster) (False).
     Returns
     -------
-    voxel: voxel of the events between t0 and t1
+    voxel: voxel of the events between t0 and t1. Dimensions are [bin,y,x]
     """
     if device is None:
         device = xs.device
     assert(len(xs)==len(ys) and len(ys)==len(ts) and len(ts)==len(ps))
     bins = []
-    dt = ts[-1] - ts[0]
+    dt = (ts[-1] - ts[0])/(B-1)
     t_norm = (ts - ts[0]) / dt * (B - 1)
     zeros = torch.zeros(t_norm.size())
     for bi in range(B):
@@ -494,16 +494,16 @@ def events_to_voxel_torch(xs, ys, ts, ps, B, device=None, sensor_size=(260, 346)
             bilinear_weights = torch.max(zeros, 1.0 - torch.abs(t_norm - bi))
             weights = ps * bilinear_weights
             vb = events_to_image_torch(xs, ys,
-                    weights, device, sensor_size=sensor_size,
+                    ps=weights, device=device, sensor_size=sensor_size,
                     clip_out_of_range=False)
         else:
-            tstart = t[0] + dt * bi
+            tstart = ts[0] + dt * bi # TODO does not work, blank frames
             tend = tstart + dt
-            beg = binary_search_torch_tensor(t, 0, len(ts)-1, tstart)
-            end = binary_search_torch_tensor(t, 0, len(ts)-1, tend)
+            beg = binary_search_torch_tensor(ts, 0, len(ts)-1, tstart)
+            end = binary_search_torch_tensor(ts, 0, len(ts)-1, tend)
             vb = events_to_image_torch(xs[beg:end], ys[beg:end],
-                    ps[beg:end], device, sensor_size=sensor_size,
-                    clip_out_of_range=False)
+                    ps=ps[beg:end], device=device, sensor_size=sensor_size,
+                    clip_out_of_range=False, interpolation=None)
         bins.append(vb)
     bins = torch.stack(bins)
     return bins
@@ -527,8 +527,8 @@ def events_to_neg_pos_voxel_torch(xs, ys, ts, ps, B, device=None,
         temporally distributed
     Returns
     -------
-    voxel_pos: voxel of the positive events
-    voxel_neg: voxel of the negative events
+    voxel_pos: voxel of the positive events [bin,y,x]
+    voxel_neg: voxel of the negative events [bin,y,x]
     """
     zero_v = torch.tensor([0.])
     ones_v = torch.tensor([1.])
