@@ -168,30 +168,7 @@ if __name__ == '__main__':
 
     log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to receive the {IMSIZE}x{IMSIZE} images')
 
-    saved_non_jokers = collections.deque(maxlen=NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER)  # lists of images to save
-    Path(JOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
-    Path(NONJOKERS_FOLDER).mkdir(parents=True, exist_ok=True)
-
-    def next_path_index(path):
-        l = glob.glob(path + '/[0-9]*.png')
-        if len(l) == 0:
-            return 0
-        else:
-            l2 = sorted(l)
-            last = l2[-1]
-            last2 = last.split('/')[-1]
-            last3 = last2.split('.')[0]
-            next = int(last3) + 1  # strip .png
-            return next
-
-    next_joker_index = next_path_index(JOKERS_FOLDER)
-    next_non_joker_index = next_path_index(NONJOKERS_FOLDER)
     cv2_resized = dict()
-
-    def print_num_saved_images():
-        log.info(f'saved {next_non_joker_index} nonjokers to {NONJOKERS_FOLDER} and {next_joker_index} jokers to {JOKERS_FOLDER}')
-
-    atexit.register(print_num_saved_images)
 
     log.info('GPU is {}'.format('available' if args.device is not None else 'not available (check cuda setup)'))
 
@@ -199,6 +176,7 @@ if __name__ == '__main__':
         """ Show the frame in named cv2 window and handle resizing
         :param frame: 2d array of float
         :param name: string name for window
+        :param resized_dict: dict to hold this frame for resizing operations
         """
         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
         cv2.imshow(name, frame)
@@ -209,7 +187,7 @@ if __name__ == '__main__':
             cv2.waitKey(1)
 
     last_frame_number=0
-    voxel_five_float32 = np.zeros((5, 224, 224))
+    voxel_five_float32 = np.zeros((NUM_BINS, IMSIZE, IMSIZE))
     c = 0
     print_key_help()
     while True:
@@ -225,17 +203,16 @@ if __name__ == '__main__':
             with Timer('unpickle and normalize/reshape'):
                 (frame_number, timestamp, x, voxel) = pickle.loads(receive_data)
                 if x == 0:
-                    voxel_five_float32 = np.zeros((1, 5, 224, 224))
+                    voxel_five_float32 = np.zeros((1, NUM_BINS, IMSIZE, IMSIZE))
                     c = 0
-                # todo: need to check
-                # dropped_frames=frame_number-last_frame_number-1
-                # if dropped_frames>0:
-                #     log.warning(f'Dropped {dropped_frames} frames from producer')
-                # last_frame_number=frame_number
+                dropped_frames=frame_number-last_frame_number-1
+                if dropped_frames>0:
+                    log.warning(f'Dropped {dropped_frames} frames from producer')
+                last_frame_number=frame_number
                 voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1
                 voxel_five_float32[:, x, :, :] = voxel_float32
                 c += 1
-            if c == 5:
+            if c == NUM_BINS:
                 with Timer('run CNN'):
                     output = model(torch.from_numpy(voxel_five_float32).float().to(device))
                     intensity = torch2cv2(output['i'])
@@ -249,6 +226,8 @@ if __name__ == '__main__':
                     aolp = cv2.applyColorMap(aolp, cv2.COLORMAP_HSV)
                     dolp = cv2.applyColorMap(dolp, cv2.COLORMAP_HOT)
 
+
+                with Timer('show output frame'):
                     image = cv2.hconcat([intensity, aolp, dolp])
                     show_frame(image, 'polarization', cv2_resized)
 

@@ -55,7 +55,7 @@
 	"imu_gyro_scale": 2,
 	"imu_low_pass_filter": 1,
 	"background_activity_filter_enabled": true,
-	"background_activity_filter_time": 4,
+	"background_activity_filter_time": 1,
 	"refractory_period_enabled": false,
 	"refractory_period_time": 1,
 	"noise_filter_configs": {

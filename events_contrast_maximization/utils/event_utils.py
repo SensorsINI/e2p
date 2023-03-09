@@ -37,11 +37,17 @@ def binary_search_h5_timestamp(hdf_path, l, r, x, side='left'):
 def binary_search_torch_tensor(t, l, r, x, side='left'):
     """
     Binary search sorted pytorch tensor
+    :param t: the 1d array to serch
+    :param l: where to start
+    :param r: where to end
+    :param x: target for search
+    :param side: whether to return 'left' or right (any other value of argument) value of index
+    :returns: index of found location
     """
     if r is None:
         r = len(t)-1
     while l <= r:
-        mid = l + (r - l)//2;
+        mid = l + (r - l)//2
         midval = t[mid]
         if midval == x:
             return mid
@@ -486,7 +492,7 @@ def events_to_voxel_torch(xs, ys, ts, ps, B, device=None, sensor_size=(260, 346)
         device = xs.device
     assert(len(xs)==len(ys) and len(ys)==len(ts) and len(ts)==len(ps))
     bins = []
-    dt = (ts[-1] - ts[0])/(B-1)
+    dt = (ts[-1] - ts[0])/(B-1) # length of bin
     t_norm = (ts - ts[0]) / dt * (B - 1)
     zeros = torch.zeros(t_norm.size())
     for bi in range(B):
@@ -497,7 +503,7 @@ def events_to_voxel_torch(xs, ys, ts, ps, B, device=None, sensor_size=(260, 346)
                     ps=weights, device=device, sensor_size=sensor_size,
                     clip_out_of_range=False)
         else:
-            tstart = ts[0] + dt * bi # TODO does not work, blank frames
+            tstart = ts[0] + dt * bi
             tend = tstart + dt
             beg = binary_search_torch_tensor(ts, 0, len(ts)-1, tstart)
             end = binary_search_torch_tensor(ts, 0, len(ts)-1, tend)

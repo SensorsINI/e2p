@@ -57,6 +57,8 @@ def producer(args):
     num_bins=args.num_bins
     sensor_resolution=args.sensor_resolution
 
+    warning_counter=0
+
     # open davis camera, set biases
     device = DAVIS(noise_filter=True)
     def cleanup():
@@ -148,8 +150,7 @@ def producer(args):
             with Timer('overall producer frame rate', numpy_file=numpy_frame_rate_data_file_path , show_hist=True) as timer_overall:
                 with Timer('accumulating DVS events'):
                     events = None
-                    dtFrameUs=None
-                    # while events is None or duration of collected events is less than frame_duration_ms keep accumulating events
+                    # while events is None or duration of collected events is less than desired keep accumulating events
                     while is_frame_not_complete(events, flex_time_mode, frame_duration_ms, frame_count_k_events): # 0 is index of timestamp
                         pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
                         if num_pol_event>0:
@@ -162,11 +163,15 @@ def producer(args):
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
                 dtMs = (time.time() - time_last_frame_sent)*1e3
                 if recording_folder is None and dtMs<MIN_PRODUCER_FRAME_INTERVAL_MS:
-                    log.debug(f'frame #{frames_dropped_counter} after only {dtMs:.3f}ms, discarding to avoid flooding consumer and instead to collect newer frame')
+                    if warning_counter<WARNING_INTERVAL or warning_counter%WARNING_INTERVAL==0:
+                        warning_counter+=1
+                        log.debug(f'frame #{frames_dropped_counter} after only {dtMs:.3f}ms, discarding to avoid flooding consumer and instead to collect newer frame')
                     frames_dropped_counter+=1
                     continue # just collect another frame since it will be more timely
                 if frames_dropped_counter>0:
-                    log.warning(f'after dropping {frames_dropped_counter} frames, got one after {dtMs:.1f}ms')
+                    if warning_counter<WARNING_INTERVAL or warning_counter%WARNING_INTERVAL==0:
+                        warning_counter+=1
+                        log.warning(f'after dropping {frames_dropped_counter} frames, got one after {dtMs:.1f}ms')
                 if save_numpy_images:
                     if saved_events is None:
                         saved_events = pol_events
@@ -200,17 +205,19 @@ def producer(args):
                     ts = torch.from_numpy((events[:, 0] - events[0, 1]).astype(np.float32))
                     ps = torch.from_numpy((events[:, 3] * 2 - 1).astype(np.float32))
                     voxel = events_to_voxel_torch(xs, ys, ts, ps, num_bins, sensor_size=sensor_resolution, temporal_bilinear=True) # TODO temporal_bilinear=False broken
-                    voxel = voxel.numpy()
-                    voxel = (((voxel + 1) / 2) * 255).astype('uint8')
+                    voxel = (((voxel + 1) / 2) * 255)
+                    voxel = voxel[:, 0:IMSIZE, 0:IMSIZE] # crop out UL corner from entire voxel frame to limit to max possible UDP packet size
+                    voxel_224 = voxel.numpy().astype('uint8')
                     # The DNN is trained with 112x112 but can test on 346x260. We crop it to 224x224 to enable UDP transfer otherwise it will be too large.
-                    voxel_224 = voxel[:, 0:224, 0:224]
 
                 with Timer('sending voxels to consumer'):
                     time_last_frame_sent=time.time()
                     # data = pickle.dumps((frame_number, time_last_frame_sent, voxel[0, :, :])) # send frame_number to allow determining dropped frames in consumer
                     # data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
-                    for x in range(voxel_224.shape[0]): # send bin by bin to consumer, each one is 224x224 bytes which is about 50kB, OK for UDP
+                    for x in range(voxel_224.shape[0]): # send bin by bin (really frame by frame) to consumer, each one is 224x224 bytes which is about 50kB, OK for UDP
                         data = pickle.dumps((frame_number, time_last_frame_sent, x, voxel_224[x, :, :]))
+                        if len(data)>64000:
+                            log.error(f'UDP packet {data} is too large')
                         frame_number+=1
                         client_socket.sendto(data, udp_address)
 
@@ -229,7 +236,7 @@ def producer(args):
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
                             voxel_224_01 = voxel_224 / 255.0
-                            # pad = np.zeros([224, 20])
+                            # pad = np.zeros([IMSIZE, 20])
                             # voxel_five = cv2.hconcat([voxel_224_01[0], pad, voxel_224_01[1], pad, voxel_224_01[2], pad,
                             #                           voxel_224_01[3], pad, voxel_224_01[4]])
                             cv2.imshow('DVS', voxel_224_01[-1]) # just show last frame
@@ -246,19 +253,24 @@ def producer(args):
                             elif k==ord('t'):
                                 flex_time_mode=not flex_time_mode
                                 print(f'toggled flex time to {flex_time_mode}')
+                                if flex_time_mode:
+                                    print(f'frames are {frame_count_k_events}k events')
+                                else:
+                                    print(f'frames are {frame_duration_ms}ms long')
+
                             elif k==ord('f'):
                                 if flex_time_mode:
-                                    frame_count_k_events=int(frame_count_k_events/2)
+                                    frame_count_k_events=decrease(frame_count_k_events, 4)
                                     print(f'shorter frames now are {frame_count_k_events}k events')
                                 else:
-                                    frame_duration_ms=int(frame_duration_ms/2)
+                                    frame_duration_ms=decrease(frame_duration_ms,4)
                                     print(f'shorter frames now are {frame_duration_ms}ms long')
                             elif k==ord('s'):
                                 if flex_time_mode:
-                                    frame_count_k_events = int(frame_count_k_events * 2)
+                                    frame_count_k_events = increase(frame_count_k_events, 200)
                                     print(f'longer frames now are {frame_count_k_events}k events')
                                 else:
-                                    frame_duration_ms = int(frame_duration_ms * 2)
+                                    frame_duration_ms = increase(frame_duration_ms,200)
                                     print(f'longer frames now are {frame_duration_ms}ms long')
                             elif k == ord('p'):
                                 print_timing_info()
@@ -292,6 +304,10 @@ def producer(args):
         log.info(f'got KeyboardInterrupt {e}')
         cleanup()
 
+def increase(val,limit):
+    return val*2 if val*2<=limit else limit
+def decrease(val,limit):
+    return val/2 if val/2>=limit else limit
 
 def is_frame_not_complete(events, flex_time_mode, frame_duration_ms, frame_count_k_events):
     if events is None:

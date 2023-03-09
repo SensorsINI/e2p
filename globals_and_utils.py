@@ -80,18 +80,17 @@ else:
         return os.path.join(home, "Downloads")
 
 LOGGING_LEVEL = logging.INFO
-PORT = 12000  # UDP port used to send frames from producer to consumer
-IMSIZE = 224  # input image size, must match model
-UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / math.log(2))))
+WARNING_INTERVAL=30 # show first this many warnings and then only every this many
 
 # EVENT_COUNT_PER_FRAME = 2300  # events per frame
 BIASES_CONFIG_FILE="./configs/davis346_config.json"
 # EVENT_DURATION = 100000  # events per voxel frame
-FLEX_TIME_MODE=True # set default to use constant-count voxel volume, False -> constant-duration
+FLEX_TIME_MODE=False # True -> constant-count voxel volume, False -> constant-duration
 FRAME_COUNT_EVENTS=50000 # default for constant-count volume entire voxel volume fed to DNN
 FRAME_DURATION_US = 50000  # default for constant-duration entire voxel volume fed to DNN
 NUM_BINS = 5 # number of bins for event voxel (frames), must be 5
 SENSOR_RESOLUTION = (260, 346) # sensor resolution in pixels, vertical, horizontal
+IMSIZE = 224  # CNN input image size, must be small enough that single frame of bytes is less than 64kB for UDP
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for collecting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
 MIN_PRODUCER_FRAME_INTERVAL_MS=3.0 # inference takes about 15ms for PDAVIS reconstruction and normalization takes 3ms
@@ -101,23 +100,15 @@ MIN_PRODUCER_FRAME_INTERVAL_MS=3.0 # inference takes about 15ms for PDAVIS recon
 MAX_SHOWN_DVS_FRAME_RATE_HZ=30 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
 ROOT_DATA_FOLDER= os.path.join(get_download_folder(), 'pdavis_demo_dataset') # does not properly find the Downloads folder under Windows if not on same disk as Windows
 
+PORT = 12000  # UDP port used to send frames from producer to consumer
+UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / math.log(2))))
+
 DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER, 'data') #/home/tobi/Downloads/pdavis_demo_dataset/data' #'data'  # new samples stored here
-NUM_NON_JOKER_IMAGES_TO_SAVE_PER_JOKER = 3 # when joker detected by consumer, this many random previous nonjoker frames are also saved
-JOKERS_FOLDER = DATA_FOLDER + '/jokers'  # where samples are saved during runtime of consumer
-NONJOKERS_FOLDER = DATA_FOLDER + '/nonjokers'
-SERIAL_PORT = "/dev/ttyUSB0"  # port to talk to arduino finger controller
 
 LOG_DIR='logs'
 SRC_DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'source_data') #'/home/tobi/Downloads/trixsyDataset/source_data'
 TRAIN_DATA_FOLDER=os.path.join(ROOT_DATA_FOLDER,'training_dataset') #'/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
 
-
-MODEL_DIR='models' # where models stored
-JOKER_NET_BASE_NAME='joker_net' # base name
-USE_TFLITE = True  # set true to use TFLITE model, false to use full TF model for inference
-TFLITE_FILE_NAME=JOKER_NET_BASE_NAME+'.tflite' # tflite model is stored in same folder as full-blown TF2 model
-CLASS_DICT={'nonjoker':1, 'joker':2} # class1 and class2 for classifier
-JOKER_DETECT_THRESHOLD_SCORE=.95 # minimum 'probability' threshold on joker output of CNN to trigger detection
 
 import signal
 def alarm_handler(signum, frame):
