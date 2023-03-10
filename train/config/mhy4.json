@@ -1,0 +1,118 @@
+{
+    "name": "mhy4",
+    "n_gpu": 1,
+    "arch": {
+        "type": "FireNet_P",
+        "args": {
+            "unet_kwargs": {
+                "num_bins": 10,
+                "skip_type": "sum",
+                "recurrent_block_type": "convlstm",
+                "num_encoders": 3,
+                "base_num_channels": 32,
+                "num_residual_blocks": 2,
+                "use_upsample_conv": true,
+                "final_activation": "sigmoid",
+                "norm": "none"
+            }
+        }
+    },
+    "data_loader": {
+        "type": "HDF5DataLoader",
+        "args": {
+            "data_file": "/home/mhy/firenet-pdavis/data/train_p/train.txt",
+            "batch_size": 2,
+            "shuffle": true,
+            "num_workers": 16,
+            "pin_memory": true,
+            "sequence_kwargs": {
+                "sequence_length": 40,
+                "dataset_type": "DynamicH5Dataset_v2e_p",
+                "proba_pause_when_running": 0.05,
+                "proba_pause_when_paused": 0.9,
+                "normalize_image": false,
+                "noise_kwargs": {
+                    "noise_std": 0.1,
+                    "noise_fraction": 1.0
+                },
+                "hot_pixel_kwargs": {
+                    "hot_pixel_std": 0.1,
+                    "max_hot_pixel_fraction": 0.001
+                },
+                "dataset_kwargs": {
+                    "transforms": {
+                        "RandomCrop": {
+                            "size": 112,
+                            "preserve_mosaicing_pattern": true
+                        },
+                        "RandomFlip": {}
+                    },
+                    "num_bins": 5,
+                    "sensor_resolution": [256, 306],
+                    "combined_voxel_channels": false
+                }
+            }
+        }
+    },
+    "valid_data_loader": {
+        "type": "HDF5DataLoader",
+        "args": {
+            "data_file": "/home/mhy/firenet-pdavis/data/test_p/test.txt",
+            "batch_size": 1,
+            "shuffle": false,
+            "num_workers": 0,
+            "pin_memory": true,
+            "sequence_kwargs": {
+                "sequence_length": 320,
+                "dataset_type": "DynamicH5Dataset_v2e_p",
+                "normalize_image": false,
+                "dataset_kwargs": {
+                    "max_length": 320,
+                    "transforms": {
+                        "CenterCrop": {
+                            "size": 112,
+                            "preserve_mosaicing_pattern": true
+                        }
+                    },
+                    "num_bins": 5,
+                    "sensor_resolution": [256, 306],
+                    "combined_voxel_channels": false
+                }
+            }
+        }
+    },
+    "optimizer": {
+        "type": "Adam",
+        "args": {
+            "lr": 0.0001,
+            "weight_decay": 0,
+            "amsgrad": true
+        }
+    },
+    "loss_ftns": {
+        "perceptual_loss": {
+            "weight": 1.0,
+            "net": "vgg"
+        },
+        "l2_loss": {
+            "weight": 2.0
+        }
+    },
+    "lr_scheduler": {
+        "type": "StepLR",
+        "args": {
+            "step_size": 50,
+            "gamma": 1.0
+        }
+    },
+    "trainer": {
+        "epochs": 100,
+        "save_dir": "/home/mhy/firenet-pdavis/ckpt",
+        "save_period": 5,
+        "verbosity": 2,
+        "monitor": "min loss",
+        "num_previews": 4,
+        "val_num_previews": 8,
+        "tensorboard": true
+    }
+}

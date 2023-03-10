@@ -1,0 +1,1 @@
+python run_reconstruction.py -c firenet_1000.pth.tar --display --show_events --fixed_duration --no-normalize --window_duration 10 -i data/July12_Object\DAVIS\July_12_2\MLData\zip/I0.zip --output_folder output_reconstruction/July12_2\10ms

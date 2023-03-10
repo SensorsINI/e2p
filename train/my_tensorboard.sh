@@ -1,0 +1,1 @@
+tensorboard --logdir=/home/mhy/firenet-pdavis/ckpt/log/m88_new_pae_2/0910_193652

@@ -1,0 +1,1 @@
+python events_contrast_maximization/tools/txt_to_h5.py /home/mhy/aedat2pvideo/aedat/1610pm --output_dir=/home/mhy/aedat2pvideo/aedat/1610pm --zero_timestamps

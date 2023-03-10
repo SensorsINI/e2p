@@ -1,0 +1,118 @@
+{
+    "name": "m54",
+    "n_gpu": 1,
+    "arch": {
+        "type": "M54",
+        "args": {
+            "unet_kwargs": {
+                "num_bins": 5,
+                "skip_type": "no_skip",
+                "recurrent_block_type": "convgru",
+                "base_num_channels": 32,
+                "num_residual_blocks": 2,
+                "kernel_size": 3,
+                "final_activation": "none",
+                "norm": "none",
+                "BN_momentum": 0.01
+            }
+        }
+    },
+    "data_loader": {
+        "type": "HDF5DataLoader",
+        "args": {
+            "data_file": "./data/movingcam/train_iad.txt",
+            "batch_size": 24,
+            "shuffle": true,
+            "num_workers": 16,
+            "pin_memory": true,
+            "sequence_kwargs": {
+                "sequence_length": 20,
+                "dataset_type": "DynamicH5Dataset_v2e_p",
+                "proba_pause_when_running": 0.05,
+                "proba_pause_when_paused": 0.9,
+                "normalize_image": true,
+                "noise_kwargs": {
+                    "noise_std":0.1,
+                    "noise_fraction": 1.0
+                },
+                "hot_pixel_kwargs": {
+                    "hot_pixel_std": 0.1,
+                    "max_hot_pixel_fraction": 0.001
+                },
+                "dataset_kwargs": {
+                    "transforms": {
+                        "RandomCrop": {
+                            "size": 112,
+                            "preserve_mosaicing_pattern": true
+                        }
+                    },
+                    "num_bins": 5,
+                    "sensor_resolution": [480, 640],
+                    "combined_voxel_channels": true
+                }
+            }
+        }
+    },
+    "valid_data_loader": {
+        "type": "HDF5DataLoader",
+        "args": {
+            "data_file": "./data/movingcam/test_iad.txt",
+            "batch_size": 1,
+            "shuffle": false,
+            "num_workers": 16,
+            "pin_memory": true,
+            "sequence_kwargs": {
+                "sequence_length": 200,
+                "dataset_type": "DynamicH5Dataset_v2e_p",
+                "normalize_image": true,
+                "dataset_kwargs": {
+                    "transforms": {
+                        "CenterCrop": {
+                            "size": 160,
+                            "preserve_mosaicing_pattern": true
+                        }
+                    },
+                    "num_bins": 5,
+                    "sensor_resolution": [480, 640],
+                    "combined_voxel_channels": true
+                }
+            }
+        }
+    },
+    "optimizer": {
+        "type": "Adam",
+        "args": {
+            "lr": 0.002,
+            "weight_decay": 0,
+            "amsgrad": true
+        }
+    },
+    "loss_ftns": {
+        "perceptual_loss": {
+            "weight": 1.0
+        },
+        "l2_loss": {
+            "weight": 1.0
+        },
+        "ssim_loss": {
+            "weight": 1.0
+        }
+    },
+    "lr_scheduler": {
+        "type": "StepLR",
+        "args": {
+            "step_size": 30,
+            "gamma": 1.0
+        }
+    },
+    "trainer": {
+        "epochs": 100,
+        "save_dir": "./ckpt",
+        "save_period": 30,
+        "verbosity": 2,
+        "monitor": "min loss",
+        "num_previews": 4,
+        "val_num_previews": 8,
+        "tensorboard": true
+    }
+}
