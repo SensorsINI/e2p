@@ -109,6 +109,7 @@ LOG_DIR='logs'
 SRC_DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'source_data') #'/home/tobi/Downloads/trixsyDataset/source_data'
 TRAIN_DATA_FOLDER=os.path.join(ROOT_DATA_FOLDER,'training_dataset') #'/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
 
+USE_FIRENET=False # False to use firenet DNN from Cedric/Henri/RPG, True to use e2p DNN
 
 import signal
 def alarm_handler(signum, frame):

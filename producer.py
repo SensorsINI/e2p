@@ -241,8 +241,7 @@ def producer(args):
                             #                           voxel_224_01[3], pad, voxel_224_01[4]])
                             cv2.imshow('DVS', voxel_224_01[-1]) # just show last frame
                             if not cv2_resized:
-                                # cv2.resizeWindow('DVS', 2240, 448)
-                                cv2.resizeWindow('DVS', 448, 448)
+                                cv2.resizeWindow('DVS', IMSIZE*2, IMSIZE*2)
                                 cv2_resized = True
                             k = cv2.waitKey(1) & 0xFF
                             if k == ord('q') or k == ord('x'):
@@ -360,6 +359,12 @@ def get_args():
     parser.add_argument(
         "--numpy", action='store_true', default=True,
         help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")
+    parser.add_argument('--e2p', action='store_true', default=True,
+                        help='set required parameters to run events to polarity e2p DNN')
+    parser.add_argument('--e2vid', action='store_true', default=False,
+                        help='set required parameters to run original e2vid as described in Rebecq20PAMI for polariziation reconstruction')
+    parser.add_argument('--firenet_legacy', action='store_true', default=False,
+                        help='set required parameters to run legacy firenet as described in Scheerlinck20WACV (not for retrained models using updated code)')
     args = parser.parse_args()
     return args
 

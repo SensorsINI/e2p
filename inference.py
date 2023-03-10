@@ -192,13 +192,6 @@ def main(args, model):
         time_list.append(time_each)
         # save sample images, or do something with output here
 
-        # calculate the computational efficiency
-        if args.calculate_mode:
-            flops, params = profile(model, inputs=(voxel,))
-            flops, params = clever_format([flops, params], "%.3f")
-            print(model)
-            print('[Statistics Information]\nFLOPs: {}\nParams: {}'.format(flops, params))
-            exit(0)
 
         if args.is_flow:
             flow_t = torch.squeeze(crop.crop(output['flow']))
