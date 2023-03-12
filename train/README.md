@@ -23,7 +23,7 @@
 - `apt-get install libgl1`
 
 ### Using E2PD
-Download E2PD from [here]() and unzip it to ./data/ folder
+Download E2PD from [ [Onedrive]() ] or [ [Baidu Disk](), fetch code: e2pd ] and unzip it to ./data/ folder
 
 - txt file location
   - ./data/E2PD/train.txt
@@ -35,9 +35,9 @@ Download E2PD from [here]() and unzip it to ./data/ folder
 
 ### Recording Data using PDAVIS
 - Using PDAVIS to record aedat2 files and save them at ./data/new/real/
-- Extract PDAVIS frames
+- extract PDAVIS frames
   - `python my_extract_aps.py`
-- Manually extract PDAVIS events from jaer
+- manually extract PDAVIS events from jaer
   - (** Need to open the output xxx-events.txt and delete the first _n_ rows as they are duplicated **)
   - (** To find how many rows are duplicated, we can check the timestamp of the first frame in xxx-timecode.txt and then use this timestamp to find where the timestamp discontinuity appears in xxx-events.txt **)
 - convert avi to frames
@@ -51,11 +51,11 @@ Download E2PD from [here]() and unzip it to ./data/ folder
 - `sh my_train.sh`
 
 ### Test
-- e2p model
+- test e2p model
   - `python my_test.py`
-- firenet model
+- test firenet model
   - `python my_test_firenet.py`
-- e2vid model
+- test e2vid model
   - `python my_test_e2vid.py`
 - align e2p and firenet for visual comparison
   - `python align3_images.py`
