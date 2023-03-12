@@ -2,7 +2,7 @@
 #### _INI_ 
 #### _UZH / ETH Zurich_
 
-### Experimental Environment
+### Local Experimental Environment
 - Ubuntu 20.04.3 LTS
 - NVIDIA GeForce RTX 3080 (10G Memory)
 - NVIDIA-SMI = 470.94
@@ -24,7 +24,7 @@
 - ./data/E2PD/real/real-xx.h5
 
 3. synthetic/real output location
-- ./output/e2p
+- ./output_e2p
 - ./output_real
 - ./txt_eval/e2p.txt
 
@@ -35,45 +35,32 @@
 - `python my_merge_h5.py`
 - `python my_create_real_list.py`
 
-### 3090/V100 Server
+### 3090/V100 Server Environment Configuration
 - Python 3.8.13
 - PyTorch 1.12.0a0+8a1a93a
-
 - `sudo docker pull nvcr.io/nvidia/pytorch:22.05-py3`
 - `pip install -r requirements.txt`
 - `apt-get update`
 - `apt-get install libgl1`
 - `python utils/create_link.py`
 
-- `git clone https://gitee.com/meihaiyang/cutlass.git`
-- `cd cutlass/examples/19_large_depthwise_conv2d_torch_extension`
-- `./setup.py install`
-- A quick check: `python depthwise_conv2d_implicit_gemm.py`
-- `add2virtualenv cutlass/examples/19_large_depthwise_conv2d_torch_extension`
-
-## Work with real aedat2 file
-for FireNet, refer to project aedat2pvideo
-
-for my own model, run the following command: 
-- `python my_test_on_real_data.py`
-- `python visualize_pvideo_for_real_data.py` (can visualize both firenet and my own model)
-
-
 ### Train
-`sh my_train.sh`
+- `sh my_train.sh`
 
 ### Test
-- `python my_test.py`
-  - `python raw2p.py`
-  - `python direction2p`
-- `python visualize_pvideo.py`
-  - `python h5gt2iad.py`
-  - `python visualize_pvideo.py`
-- `python align_prediction_and_gt.py`
-
+- e2p model
+  - `python my_test.py`
+- firenet model
+  - `python my_test_firenet.py`
+- e2vid model
+  - `python my_test_e2vid.py`
+- align e2p and firenet for visual comparison
+  - `python align3_images.py`
+- split the visual comparison results
+  - `python split_visual3.py`
 
 ### Evaluation
-`python evaluation.py`
+`python eval.py`
 
 ### For Real
 - test firenet on real data
