@@ -1,4 +1,4 @@
-# Polarization Reconstruction from PDAVIS Events
+# Deep Polarization Reconstruction with PDAVIS Events
 #### Haiyang Mei    
 #### _INI_ 
 #### _UZH / ETH Zurich_
