@@ -11,7 +11,7 @@
 import os
 from tqdm import tqdm
 
-root = '/home/mhy/firenet-pdavis/data/real'
+root = './data/new/real'
 
 aedat_list = sorted([x for x in os.listdir(root) if x.endswith('.aedat')])
 
