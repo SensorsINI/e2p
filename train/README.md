@@ -71,67 +71,16 @@ for my own model, run the following command:
   - `python visualize_pvideo.py`
 - `python align_prediction_and_gt.py`
 
+
 ### Evaluation
 `python evaluation.py`
 
 ### For Real
-- `python my_test_firenet.py`
+- test firenet on real data
+  - `python my_test_firenet.py`
+- obtain the pdavis frame from h5 file
+  - `python utils/h5gt2iad.py`
+
+### Dataset Visualization
 - `python utils/h5gt2iad.py`
-
-### Moving Camera Dataset Visualization
-- `workon e2v`
-
-see gt polarization from original raw data as done in glass project
-- `cd utils`
-  - `python process_raw_demosaicing.py` or `python process_crop_demosaicing.py`
-  - `python visualize_pvideo.py`
-
-see gt polarization from v2e output h5 file
-- `cd utils`
-  - `python h5gt2p.py` or `python h5gt2iad.py`
-  - `python visualize_pvideo.py`
-
-### Data Generation
-
-- `workon v2e`
-  - `python extract_from_PHSPD_to_pvideo.py`
-  - `sh my_run.sh`
-  - copy output h5 files to data/train_or_test folder
-- `workon e2v`
-  - `python h5gt2ph5.py`
-  - `python save_frame.py`
-- `conda activate flownet2`
-  - `sh my_inference.sh`
-  - copy vis and npy files to data folder and rename them
-- `workon e2v`
-  - `python add_flow.py`
-
-### Workflow
-
-- v2e 
-  - `sh my_run.sh`
-- split into four channels. txt --> 0 45 90 135 txt 
-  - `python split.py`
-- reconstruction. txt --> frame 
-  - `sh my_run_reconstruction.sh`
-- compute polarization. frame --> polarization
-  - `python f42p.py`
-- concat intensity, aolp, and dolp. polarization --> concat
-  - `python concat_iad.py`
-    - not aligned strictly
-- generate gt polarization
-  - `python gt2p.py`
-- evaluation
-  - `python evaluation.py`
-
-### Records
-- 17.10.2022
-  - Can train on real PDAVIS data
-  - Fix the align problem
-- 16.07.2022
-  - Finally work!
-- 01.04.2022
-  - generate_h5_dataset
-- 02.04.2022
-  - check e.h5 and modify it to match the training code or revise the v2e code.
-  - try to figure out how `davis_output` option in e2v work.
+- `python visualize_pvideo.py`
