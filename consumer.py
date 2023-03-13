@@ -28,7 +28,7 @@ import random
 
 # for network inference
 import torch
-from utils.util import torch2cv2, torch2numpy
+from utils.util import torch2cv2, torch2numpy, numpy2cv2
 
 log=get_logger()
 
@@ -73,7 +73,7 @@ def legacy_compatibility(args, checkpoint):
     return args, checkpoint
 
 
-def load_model(checkpoint):
+def load_e2p_model(checkpoint):
     config = checkpoint['config']
     log.info(f'configuration is {config["arch"]}')
     state_dict = checkpoint['state_dict']
@@ -104,140 +104,32 @@ def load_model(checkpoint):
 
 def compute_firenet_output(output):
     # original firenet
-    # image = crop.crop(output['image'])
-    image = torch2cv2(output['image'])
-    # output raw
-    # image = crop.crop(output['image'])
-    image = torch2numpy(image)
+    image = torch2numpy(output)
     image = np.clip(image, 0, 1)
-    #
     i90 = image[0::2, 0::2]
     i45 = image[0::2, 1::2]
     i135 = image[1::2, 0::2]
     i0 = image[1::2, 1::2]
-    #
     s0 = i0.astype(float) + i90.astype(float)
     s1 = i0.astype(float) - i90.astype(float)
     s2 = i45.astype(float) - i135.astype(float)
-    #
 
-    # output stocks parameters
-    # s0 = crop.crop(output['s0']) * 2
-    # s1 = crop.crop(output['s1']) * 2 - 1
-    # s2 = crop.crop(output['s2']) * 2 - 1
-    #
-    # s0 = torch2numpy(s0)
-    # s1 = torch2numpy(s1)
-    # s2 = torch2numpy(s2)
-    #
-    # intensity = s0 / 2
-    # intensity = numpy2cv2(intensity)
-    #
+    intensity = s0 / 2
     aolp = 0.5 * np.arctan2(s2, s1)
     aolp = aolp + 0.5 * math.pi
     aolp = aolp / math.pi
+    dolp = np.divide(np.sqrt(np.square(s1) + np.square(s2)), s0, out=np.zeros_like(s0).astype(float), where=s0 != 0)
+    intensity = numpy2cv2(intensity)
     aolp = numpy2cv2(aolp)
-    #
-    # dolp = np.divide(np.sqrt(np.square(s1) + np.square(s2)), s0, out=np.zeros_like(s0).astype(float), where=s0 != 0)
-    # dolp = numpy2cv2(dolp)
+    dolp = numpy2cv2(dolp)
 
-    # output polarization with crop
-    # intensity = crop.crop(output['i'])
-    # intensity = torch2cv2(intensity)
-    # aolp = crop.crop(output['a'])
-    # aolp = torch2cv2(aolp)
-    # dolp = crop.crop(output['d'])
-    # dolp = torch2cv2(dolp)
+    max = np.max(intensity)
+    min = np.min(intensity)
+    intensity = (intensity - min) / (max - min) * 255
+    intensity = np.repeat(intensity[:, :, None], 3, axis=2).astype(np.uint8)
+    aolp = cv2.applyColorMap(aolp, cv2.COLORMAP_HSV)
+    dolp = cv2.applyColorMap(dolp, cv2.COLORMAP_HOT)
 
-    # output polarization without crop
-    # output['i'] = minmax_normalization(output['i'], output['i'].device)
-    intensity = torch2cv2(output['i'])
-    aolp = torch2cv2(output['a'])
-    dolp = torch2cv2(output['d'])
-    # intensity_f = torch2cv2(output['i_f'])
-    # aolp_f = torch2cv2(output['a_f'])
-    # dolp_f = torch2cv2(output['d_f'])
-
-    # intensity = torch2cv2(output['i90'])
-    # aolp = torch2cv2(output['i45'])
-    # dolp = torch2cv2(output['i135'])
-
-    # for dct output
-    # intensity = crop.crop(output['i_f'])
-    # intensity = torch2cv2(intensity)
-    # aolp = crop.crop(output['a_f'])
-    # aolp = torch2cv2(aolp)
-    # dolp = crop.crop(output['d_f'])
-    # dolp = torch2cv2(dolp)
-
-    # new representation
-    # aolp = output['image']
-    # aolp = output['a']
-    # aolp = torch2numpy(aolp)
-    # aolp = np.clip(aolp, 0, 1)
-    # aolp = aolp - 0.5
-    # aolp = np.where(aolp < 0, aolp+1, aolp)
-    # aolp = numpy2cv2(aolp)
-    # intensity = aolp
-    # dolp = aolp
-
-    # dolp = crop.crop(output['image'])
-    # dolp = crop.crop(output['d'])
-    # dolp = torch2cv2(dolp)
-    # intensity = dolp
-    # aolp = dolp
-
-    # output stocks parameters
-    # s0 = crop.crop(output['s0'])
-    # s0 = torch2numpy(s0)
-    # s0 = np.clip(s0, 0, 1)
-    # s1 = crop.crop(output['s1'])
-    # s1 = torch2numpy(s1)
-    # s1 = np.clip(s1, 0, 1)
-    # s1 = s1 * 2 - 1
-    # s2 = crop.crop(output['s2'])
-    # s2 = torch2numpy(s2)
-    # s2 = np.clip(s2, 0, 1)
-    # s2 = s2 * 2 - 1
-    #
-    # intensity = numpy2cv2(s0)
-    #
-    # aolp = 0.5 * np.arctan2(s2, s1)
-    # aolp = aolp + 0.5 * math.pi
-    # aolp = aolp / math.pi
-    # aolp = numpy2cv2(aolp)
-    #
-    # dolp = np.divide(np.sqrt(np.square(s1) + np.square(s2)), s0, out=np.zeros_like(s0).astype(float), where=s0 != 0)
-    # dolp = numpy2cv2(dolp)
-
-    # output four-direction intensity
-    # i90 = crop.crop(output['i_90'])
-    # i90 = torch2numpy(i90)
-    # i90 = np.clip(i90, 0, 1)
-    # i45 = crop.crop(output['i_45'])
-    # i45 = torch2numpy(i45)
-    # i45 = np.clip(i45, 0, 1)
-    # i135 = crop.crop(output['i_135'])
-    # i135 = torch2numpy(i135)
-    # i135 = np.clip(i135, 0, 1)
-    # i0 = crop.crop(output['i_0'])
-    # i0 = torch2numpy(i0)
-    # i0 = np.clip(i0, 0, 1)
-    #
-    # s0 = i0.astype(float) + i90.astype(float)
-    # s1 = i0.astype(float) - i90.astype(float)
-    # s2 = i45.astype(float) - i135.astype(float)
-    #
-    # intensity = s0 / 2
-    # intensity = numpy2cv2(intensity)
-    #
-    # aolp = 0.5 * np.arctan2(s2, s1)
-    # aolp = aolp + 0.5 * math.pi
-    # aolp = aolp / math.pi
-    # aolp = numpy2cv2(aolp)
-    #
-    # dolp = np.divide(np.sqrt(np.square(s1) + np.square(s2)), s0, out=np.zeros_like(s0).astype(float), where=s0 != 0)
-    # dolp = numpy2cv2(dolp)
     return intensity,aolp,dolp
 
 def compute_e2p_output(output):
@@ -253,11 +145,32 @@ def compute_e2p_output(output):
     dolp = cv2.applyColorMap(dolp, cv2.COLORMAP_HOT)
     return intensity,aolp,dolp
 
+
+def load_selected_model(args):
+    # initial network model
+    if not args.use_firenet:
+        path=E2P_MODEL if args.checkpoint_path is None else args.checkpoint_path
+        log.info(f'checkpoint model path is {path}')
+        checkpoint = torch.load(path)
+        args, checkpoint = legacy_compatibility(args, checkpoint)
+        model = load_e2p_model(checkpoint)
+    else: # load firenet
+        from rpg_e2vid.utils.loading_utils import load_model as load_firenet_model
+        path=FIRENET_MODEL if args.checkpoint_path is None else args.checkpoint_path
+        model=load_firenet_model(path)
+        model = model.to(device)
+        model.eval()
+        for param in model.parameters():
+            param.requires_grad = False
+
+    return model
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='consumer: Consumes DVS frames to process', allow_abbrev=True,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--use_firenet', type=bool, default=USE_FIRENET, help='use (legacy) firenet instead of e2p')
-    parser.add_argument('--checkpoint_path', type=str, default='e2p.pth', help='path to latest checkpoint')
+    parser.add_argument('--checkpoint_path', type=str, default=None, help='path to latest checkpoint, if not specified, uses E2P_MODEL global')
     parser.add_argument('--output_folder', default="/tmp/output", type=str,
                         help='where to save outputs to')
     parser.add_argument('--height', type=int, default=260,
@@ -317,12 +230,7 @@ if __name__ == '__main__':
     address = ("", PORT)
     server_socket.bind(address)
 
-    # initial network model
-    log.info(f'checkpoint path is {args.checkpoint_path}')
-    checkpoint = torch.load(args.checkpoint_path)
-    args, checkpoint = legacy_compatibility(args, checkpoint)
-    model = load_model(checkpoint)
-
+    model=load_selected_model(args)
 
     log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to receive the {IMSIZE}x{IMSIZE} images')
 
@@ -348,11 +256,13 @@ if __name__ == '__main__':
     voxel_five_float32 = np.zeros((NUM_BINS, IMSIZE, IMSIZE))
     c = 0
     print_key_help()
+    states=None # firenet states, to feed back into firenet
     while True:
         # todo: reset state after a long period
-        model.reset_states_i()
-        model.reset_states_a()
-        model.reset_states_d()
+        if not args.use_firenet:
+            model.reset_states_i()
+            model.reset_states_a()
+            model.reset_states_d()
         timestr = time.strftime("%Y%m%d-%H%M")
         with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True):
             with Timer('receive UDP'):
@@ -373,10 +283,11 @@ if __name__ == '__main__':
             if c == NUM_BINS:
                 with Timer('run CNN'):
                     input=torch.from_numpy(voxel_five_float32).float().to(device)
-                    output = model(input)
-                    if args.e2p:
+                    if not args.use_firenet:
+                        output = model(input)
                         intensity, aolp, dolp=compute_e2p_output(output)
-                    elif args.firenet_legacy:
+                    else:
+                        output, states = model(input,states)
                         intensity, aolp, dolp=compute_firenet_output(output)
 
 
@@ -397,6 +308,13 @@ if __name__ == '__main__':
                 print_key_help()
             elif k == ord('p'):
                 print_timing_info()
+            elif k==ord('m'):
+                args.use_firenet= not args.use_firenet
+                model = load_selected_model(args)
+                print(f' changed mode to args.use_firenet={args.use_firenet}')
+            elif k!=255:
+                print_key_help()
+                print(f'unknown key {k}')
 
     # calculate the computational efficiency
     if args.calculate_mode:
