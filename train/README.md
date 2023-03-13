@@ -23,7 +23,7 @@
 - `apt-get install libgl1`
 
 ### Using E2PD
-Download E2PD from [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1tWpU-N0lmKv36x?e=oIEajs) ] or [ [Baidu Disk](), fetch code: e2pd ] and unzip it to ./data/ folder
+Download E2PD from [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1tWpU-N0lmKv36x?e=oIEajs) ] or [ [Baidu Disk](https://pan.baidu.com/s/1JSZqcbFk_52Xd_Ex_bicmQ?pwd=e2pd), fetch code: e2pd ] and unzip it to ./data/ folder
 
 - txt file location
   - ./data/E2PD/train.txt
