@@ -169,7 +169,7 @@ def load_selected_model(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='consumer: Consumes DVS frames to process', allow_abbrev=True,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--use_firenet', type=bool, default=USE_FIRENET, help='use (legacy) firenet instead of e2p')
+    parser.add_argument('--use_firenet', action='store_true', default=USE_FIRENET, help='use (legacy) firenet instead of e2p')
     parser.add_argument('--checkpoint_path', type=str, default=None, help='path to latest checkpoint, if not specified, uses E2P_MODEL global')
     parser.add_argument('--output_folder', default="/tmp/output", type=str,
                         help='where to save outputs to')
