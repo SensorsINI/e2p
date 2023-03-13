@@ -47,6 +47,7 @@ Download E2PD from [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1tWpU-N0lmKv36x
 - create train/test list txt
   - `python my_create_real_list.py`
 
+
 ### Train
 - `sh my_train.sh`
 
