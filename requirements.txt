@@ -13,3 +13,4 @@ psutil
 pyserial
 pyzmq
 thop
+IPython

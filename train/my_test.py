@@ -10,10 +10,11 @@
 """
 import os
 
+root=os.getcwd()
 # test_txt = '/home/mhy/firenet-pdavis/data/movingcam/test_calculate.txt'
 # test_txt = '/home/mhy/firenet-pdavis/data/movingcam/test_5s.txt'
 # test_txt = '/home/mhy/firenet-pdavis/data/movingcam/test_5s_attention.txt'
-test_txt = '/home/mhy/firenet-pdavis/data/movingcam/test_real2.txt'
+test_txt = root+'/data/movingcam/test_real2.txt'
 
 # for original firenet
 # method = 'firenet_0'
@@ -44,7 +45,7 @@ date = '0127_172349'
 # date = '1031_201238'
 # method = 'v16_b_c16_i'
 # date = '1104_192744'
-ckpt_path = '/home/mhy/firenet-pdavis/ckpt/models/{}/{}/model_best.pth'.format(method, date)
+ckpt_path = root+'/ckpt/models/{}/{}/model_best.pth'.format(method, date)
 # ckpt_path = '/home/mhy/firenet-pdavis/ckpt/models/{}/{}/checkpoint-epoch30.pth'.format(method, date)
 
 # for finetuned model
@@ -73,7 +74,7 @@ for name in list:
     # call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --robust_norm'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
     ############ without norm
     # call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
-    call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_real/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
     ########### without norm for attention visualization
     # call_with_args = 'python inference_v.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_attention/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
     ########### without norm for ablation study

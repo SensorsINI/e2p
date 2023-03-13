@@ -51,6 +51,14 @@ Download E2PD from [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1tWpU-N0lmKv36x
 ### Train
 - `sh my_train.sh`
 
+Steps are illustrated below. 
+
+1. The main config is [e2p.json](e2p.json)
+2.  It points to  [train.txt](data%2FE2PD%2Ftrain.txt) which lists the training input files.
+3. These files must be at the locations listed in train.txt
+
+![train_steps.png](train_steps.png)
+
 ### Test
 - test e2p model
   - `python my_test.py`
