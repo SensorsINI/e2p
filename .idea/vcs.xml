@@ -3,5 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/rpg_e2vid" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/yingkai_chen_UIUC_code_firenet/DVS_Sensor" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/yingkai_chen_UIUC_code_firenet/DVS_Sensor/poldavis-seneor" vcs="Git" />
   </component>
 </project>

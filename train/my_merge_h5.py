@@ -18,7 +18,7 @@ import math
 from tqdm import tqdm
 from events_contrast_maximization.utils.event_utils import binary_search_h5_dset
 
-root = '/home/mhy/firenet-pdavis/data/real'
+root = 'data/real'
 
 list = sorted([x for x in os.listdir(root) if x.endswith('.aedat')])
 

@@ -14,7 +14,7 @@ sys.path.append('..')
 from misc import check_mkdir
 import cv2
 
-dir = '/home/mhy/firenet-pdavis/data/real'
+dir = 'data/real'
 video_list = sorted([x for x in os.listdir(dir) if x.endswith('.avi')])
 
 for video_name in video_list:

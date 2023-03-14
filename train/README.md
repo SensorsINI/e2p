@@ -34,19 +34,23 @@ Download E2PD from [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1tWpU-N0lmKv36x
   - ./data/E2PD/real/real-xx.h5
 
 ### Recording Data using PDAVIS
-- Using PDAVIS to record aedat2 files and save them at ./data/new/real/
-- extract PDAVIS frames
+- Using PDAVIS with jAER to record aedat2 files and save them at ./data/new/real/
+- extract PDAVIS frames with [my_extract_events.py](my_extract_events.py)
   - `python my_extract_aps.py`
 - manually extract PDAVIS events from jaer
   - (** Need to open the output xxx-events.txt and delete the first _n_ rows as they are duplicated **)
   - (** To find how many rows are duplicated, we can check the timestamp of the first frame in xxx-timecode.txt and then use this timestamp to find where the timestamp discontinuity appears in xxx-events.txt **)
-- convert avi to frames
+- convert avi to frames with [my_video2frame.py](my_video2frame.py)
   - `python my_video2frame.py`
-- merge events, frame, frame_idx, frame_ts, intensity, aolp, dolp into one hdf5 file for the use of DNN
+- merge events, frame, frame_idx, frame_ts, intensity, aolp, dolp into one hdf5 file for the use of DNN using [my_merge_h5.py](my_merge_h5.py)
   - `python my_merge_h5.py`
-- create train/test list txt
+- create train/test list txt with [my_create_real_list.py](my_create_real_list.py)
   - `python my_create_real_list.py`
 
+### Training input hdf5 files
+The data files should have the following contents
+
+![h5_file_contents.png](h5_file_contents.png)
 
 ### Train
 - `sh my_train.sh`

@@ -17,7 +17,7 @@ list = sorted([x for x in os.listdir(root) if x.endswith('.h5')])
 paths = []
 for name in list:
     # path = os.path.join(root, name).replace('/home/mhy/firenet-pdavis', '.')
-    paths.append(path)
+    paths.append(name)
 
 with open(txt_path, 'w') as f:
     for x in paths:

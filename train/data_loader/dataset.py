@@ -2192,7 +2192,7 @@ class DynamicH5Dataset(BaseVoxelDataset):
             self.sensor_resolution = self.h5_file.attrs['sensor_resolution'][0:2]
         else:
             self.sensor_resolution = self.sensor_resolution[0:2]
-        print("sensor resolution = {}".format(self.sensor_resolution))
+        # print("sensor resolution = {}".format(self.sensor_resolution))
         self.has_flow = 'flow' in self.h5_file.keys() and len(self.h5_file['flow']) > 0
         self.t0 = self.h5_file['events/ts'][0]
         self.tk = self.h5_file['events/ts'][-1]
@@ -2254,7 +2254,8 @@ class DynamicH5Dataset_v2e(BaseVoxelDataset):
             print("Please specify sensor resolution!")
             raise ValueError
         else:
-            print("sensor resolution = {}".format(self.sensor_resolution))
+            pass
+            # print("sensor resolution = {}".format(self.sensor_resolution))
         # self.has_flow = 'frame_flow' in self.h5_file.keys() and len(self.h5_file['/frame_flow']) > 0
         self.has_flow = False
         # self.has_flow = 'flow' in self.h5_file.keys() and len(self.h5_file['/flow']) > 0
@@ -2398,7 +2399,8 @@ class DynamicH5Dataset_v2e_45(BaseVoxelDataset):
             print("Please specify sensor resolution!")
             raise ValueError
         else:
-            print("sensor resolution = {}".format(self.sensor_resolution))
+            pass
+            # print("sensor resolution = {}".format(self.sensor_resolution))
         # self.has_flow = 'frame_flow' in self.h5_file.keys() and len(self.h5_file['/frame_flow']) > 0
         self.has_flow = False
         # self.has_flow = 'flow' in self.h5_file.keys() and len(self.h5_file['/flow']) > 0

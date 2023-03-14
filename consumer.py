@@ -45,6 +45,8 @@ from parse_config import ConfigParser
 
 model_info = {}
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+states = None  # firenet states, to feed back into firenet
+model = None
 
 def print_key_help():
     print('producer keys to use in cv2 image window:\n'
@@ -102,14 +104,16 @@ def load_e2p_model(checkpoint):
 
     return model
 
-def compute_firenet_output(output):
+def compute_firenet_output(input):
+    output, states = model(input, states)  # TODO not correct, should build voxel grid for each polarization channel and run on each independently
+
     # original firenet
     image = torch2numpy(output)
     image = np.clip(image, 0, 1)
-    i90 = image[0::2, 0::2]
-    i45 = image[0::2, 1::2]
-    i135 = image[1::2, 0::2]
     i0 = image[1::2, 1::2]
+    i45 = image[0::2, 1::2]
+    i90 = image[0::2, 0::2]
+    i135 = image[1::2, 0::2]
     s0 = i0.astype(float) + i90.astype(float)
     s1 = i0.astype(float) - i90.astype(float)
     s2 = i45.astype(float) - i135.astype(float)
@@ -256,7 +260,6 @@ if __name__ == '__main__':
     voxel_five_float32 = np.zeros((NUM_BINS, IMSIZE, IMSIZE))
     c = 0
     print_key_help()
-    states=None # firenet states, to feed back into firenet
     while True:
         # todo: reset state after a long period
         if not args.use_firenet:
@@ -283,12 +286,12 @@ if __name__ == '__main__':
             if c == NUM_BINS:
                 with Timer('run CNN'):
                     input=torch.from_numpy(voxel_five_float32).float().to(device)
-                    if not args.use_firenet:
+                    if not args.use_firenet: # e2p, just use voxel grid from producer
                         output = model(input)
                         intensity, aolp, dolp=compute_e2p_output(output)
-                    else:
-                        output, states = model(input,states)
-                        intensity, aolp, dolp=compute_firenet_output(output)
+                    else: # firenet, we need to extract the 4 angle channels and run firenet on each one
+
+                        intensity, aolp, dolp=compute_firenet_output(input)
 
 
                 with Timer('show output frame'):

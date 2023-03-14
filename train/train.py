@@ -65,6 +65,8 @@ np.random.seed(SEED)
 #         print('Loaded ColorNet')
 #     return model
 
+# import os
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
 
 def main(config):
     logger = config.get_logger('train')
@@ -117,6 +119,7 @@ def main(config):
     #                     lr_scheduler=lr_scheduler)
 
     start_time = time.time()
+    torch.cuda.empty_cache()
     trainer.train()
     print("Total Training Time: {}".format(str(datetime.timedelta(seconds=int(time.time() - start_time)))))
     print("Optimization Have Done!")
@@ -124,7 +127,7 @@ def main(config):
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Training')
-    args.add_argument('-c', '--config', default=None, type=str,
+    args.add_argument('-c', '--config', default='./e2p.json', type=str,
                       help='config file path (default: None)')
     args.add_argument('-r', '--resume', default=None, type=str,
                       help='path to latest checkpoint (default: None)')
