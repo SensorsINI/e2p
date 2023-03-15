@@ -9,3 +9,5 @@ pytorch_msssim
 timm
 dv
 tensorboardx
+IPython
+moviepy
