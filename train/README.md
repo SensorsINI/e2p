@@ -37,9 +37,12 @@ Download E2PD from [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1tWpU-N0lmKv36x
 - Using PDAVIS with jAER to record aedat2 files and save them at ./data/new/real/
 - extract PDAVIS frames with [my_extract_events.py](my_extract_events.py)
   - `python my_extract_aps.py`
-- manually extract PDAVIS events from jaer
-  - (** Need to open the output xxx-events.txt and delete the first _n_ rows as they are duplicated **)
-  - (** To find how many rows are duplicated, we can check the timestamp of the first frame in xxx-timecode.txt and then use this timestamp to find where the timestamp discontinuity appears in xxx-events.txt **)
+- manually extract PDAVIS events from jaer using EventFilter DavisTextOutputWriter; see https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/#bookmark=id.9xld1vw3ttt0
+  -  Set the options "rewindBeforeRecording" and "dvsEvents" and "closeOnRewind"
+  - Click the "StartRecordingAndSaveAs" button and choose output file with .txt extension; you can select the ./data/new/real/...timecode.txt file and delete the timecode part.
+    - (** Need to open the output xxx-events.txt and delete the first _n_ rows as they are duplicated **)
+    - (** To find how many rows are duplicated, we can check the timestamp of the first frame in xxx-timecode.txt and then use this timestamp to find where the timestamp discontinuity appears in xxx-events.txt **)
+    - ![write-events-txt-file.png](write-events-txt-file.png)
 - convert avi to frames with [my_video2frame.py](my_video2frame.py)
   - `python my_video2frame.py`
 - merge events, frame, frame_idx, frame_ts, intensity, aolp, dolp into one hdf5 file for the use of DNN using [my_merge_h5.py](my_merge_h5.py)
@@ -47,8 +50,10 @@ Download E2PD from [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1tWpU-N0lmKv36x
 - create train/test list txt with [my_create_real_list.py](my_create_real_list.py)
   - `python my_create_real_list.py`
 
+Now you should have the new list of training files to add to existing list
+
 ### Training input hdf5 files
-The data files should have the following contents
+The HDF5 (.h5) files should have the following contents
 
 ![h5_file_contents.png](h5_file_contents.png)
 

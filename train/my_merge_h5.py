@@ -18,7 +18,9 @@ import math
 from tqdm import tqdm
 from events_contrast_maximization.utils.event_utils import binary_search_h5_dset
 
-root = 'data/real'
+root = 'data/new/real'
+
+print(f'creating h5 merged files')
 
 list = sorted([x for x in os.listdir(root) if x.endswith('.aedat')])
 
@@ -31,15 +33,17 @@ for aedat_name in tqdm(list):
     frame_idx_path = os.path.join(root, name + '-frame_idx.txt')
 
     # read events
+    print(f'loading events from {events_path}...',end=None)
     events = np.loadtxt(events_path, dtype=np.float128)
+    print('done')
     events = events * [1e6, 1, 1, 1]
     events = (events - [0, 0, 259, 0]) * [1, 1, -1, 1]
     events = events.astype(np.uint32)
     print('--------- events ------------')
-    print(events.shape)
-    print(events.dtype)
+    print(f'events.shape={events.shape} events.dtype={events.dtype}')
 
     # read frame
+    print(f'loading frames from {image_dir}...',end=None)
     image_list = sorted(os.listdir(image_dir))
     image_list = image_list[1:]
     i = 0
@@ -52,10 +56,10 @@ for aedat_name in tqdm(list):
             frame = np.append(frame, image[np.newaxis, :, :], axis=0)
         i += 1
     print('--------- frame ------------')
-    print(frame.shape)
-    print(frame.dtype)
+    print(f'frame.shape={frame.shape} frame.dtype={events.dtype}')
 
     # read timestamp
+    print(f'reading timestamps from {timestamp_path}')
     frame_ts = np.loadtxt(timestamp_path, dtype=np.uint32, skiprows=13)
     frame_ts = frame_ts[2::2, 1]
     print('--------- frame_ts ------------')
