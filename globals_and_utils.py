@@ -177,7 +177,7 @@ def yes_or_no(question, default='y', timeout=None):
 timers = {}
 times = {}
 class Timer:
-    def __init__(self, timer_name='', delay=None, show_hist=False, numpy_file=None, savefig=True):
+    def __init__(self, timer_name='', delay=None, show_hist=False, numpy_file=None, savefig=False):
         """ Make a Timer() in a _with_ statement for a block of code.
         The timer is started when the block is entered and stopped when exited.
         The Timer _must_ be used in a with statement.
@@ -185,7 +185,7 @@ class Timer:
         :param timer_name: the str by which this timer is repeatedly called and which it is named when summary is printed on exit
         :param delay: set this to a value to simply accumulate this externally determined interval
         :param show_hist: whether to plot a histogram with pyplot
-        :param savefig: whether to save PDF of histogram; it is saved to timer_name_timing_histogram.pdf
+        :param savefig: whether to save PDF of histogram; it is saved to timer_plots/<timer_name>_timing_histogram.pdf
         :param numpy_file: optional numpy file path
         """
         self.timer_name = timer_name
@@ -276,7 +276,12 @@ def print_timing_info():
                 plt.ylabel('frequency')
                 plt.title(timer)
                 if timers[timer].savefig:
-                    fn=timers[timer].timer_name+'_timer_hist.pdf'
+                    # python program to check if a path exists
+                    # if path doesn’t exist we create a new path
+                    from pathlib import Path
+                    # creating a new directory called pythondirectory
+                    Path("timer_plots").mkdir(exist_ok=True)
+                    fn=os.path.join('timer_plots', timers[timer].timer_name+'_timer_hist.pdf')
                     plt.savefig(fn)
                     log.info(f'saved timing histogram to {fn}')
                 plt.show()

@@ -147,7 +147,7 @@ def producer(args):
                 device.set_bias_from_json(BIASES_CONFIG_FILE)
                 biases_mtime=new_biases_mtime
 
-            with Timer('overall producer frame rate', numpy_file=numpy_frame_rate_data_file_path , show_hist=True) as timer_overall:
+            with Timer('overall producer frame rate', numpy_file=numpy_frame_rate_data_file_path , show_hist=True, savefig=True) as timer_overall:
                 with Timer('accumulating DVS events'):
                     events = None
                     # while events is None or duration of collected events is less than desired keep accumulating events
