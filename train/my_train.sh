@@ -11,7 +11,14 @@ pdavis='/home/tobi/pdavis_demo'
 #export CUDA_VISIBLE_DEVICES=0
 #python train.py --config ./config_v/v16_woln_ft_mix.json --limited_memory --resume /home/mhy/firenet-pdavis/ckpt/models/v16_woln/1018_202813/model_best.pth
 
+# # fine tune published model with new data; see README.md to add new data
+# config="e2p.json"
+# echo "training with config $config"
+# python train.py -c $config --limited_memory --resume $pdavis/e2p.pth
+
+
 # fine tune published model with new data; see README.md to add new data
-config="e2p.json"
-echo "training with config $config"
-python train.py -c $config --limited_memory --resume $pdavis/e2p.pth
+config="e2p-finetune-only-new.json"
+ckpt="$pdavis/e2p.pth"
+echo "training with config $config starting from ckpt $ckpt"
+python train.py -c $config --limited_memory --resume $ckpt
