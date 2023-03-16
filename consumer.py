@@ -267,7 +267,7 @@ if __name__ == '__main__':
             model.reset_states_a()
             model.reset_states_d()
         timestr = time.strftime("%Y%m%d-%H%M")
-        with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True):
+        with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True, savefig=True):
             with Timer('receive UDP'):
                 receive_data = server_socket.recv(UDP_BUFFER_SIZE)
 
@@ -284,7 +284,7 @@ if __name__ == '__main__':
                 voxel_five_float32[:, x, :, :] = voxel_float32
                 c += 1
             if c == NUM_BINS:
-                with Timer('run CNN'):
+                with Timer('run CNN', savefig=True):
                     input=torch.from_numpy(voxel_five_float32).float().to(device)
                     if not args.use_firenet: # e2p, just use voxel grid from producer
                         output = model(input)

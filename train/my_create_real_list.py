@@ -10,8 +10,8 @@
 """
 import os
 
-root = './data/new/real'
-txt_path = './data/new/real.txt'
+root = './data/E2PD/new'
+txt_path = './data/E2PD/new/real.txt'
 
 print(f'creating {txt_path} with h5 file list....')
 

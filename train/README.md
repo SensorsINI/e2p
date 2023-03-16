@@ -40,7 +40,7 @@ Download E2PD from [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1tWpU-N0lmKv36x
 - manually extract PDAVIS events from jaer using EventFilter DavisTextOutputWriter; see https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/#bookmark=id.9xld1vw3ttt0
   -  Set the options "rewindBeforeRecording" and "dvsEvents" and "closeOnRewind"
   - Click the "StartRecordingAndSaveAs" button and choose output file with .txt extension; you can select the ./data/new/real/...timecode.txt file and delete the timecode part.
-    - (** Need to open the output xxx-events.txt and delete the first _n_ rows as they are duplicated **)
+    - (** Because of bug in DavisTextOutputWriter, it is essential to open the output xxx-events.txt and delete the first _n_ rows as they are duplicated. __n__ will be large number of perhaps 10k lines! **. If you don't do this you will get bogus timestamps that mess up the synchronization between events and frames and the training will have meaningless GT target.)
     - (** To find how many rows are duplicated, we can check the timestamp of the first frame in xxx-timecode.txt and then use this timestamp to find where the timestamp discontinuity appears in xxx-events.txt **)
     - ![write-events-txt-file.png](write-events-txt-file.png)
 - convert avi to frames with [my_video2frame.py](my_video2frame.py)

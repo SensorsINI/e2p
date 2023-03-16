@@ -14,7 +14,7 @@ sys.path.append('..')
 from misc import check_mkdir
 import cv2
 
-dir = 'data/new/real'
+dir = 'data/E2PD/new'
 video_list = sorted([x for x in os.listdir(dir) if x.endswith('.avi')])
 
 for video_name in video_list:

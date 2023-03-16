@@ -18,7 +18,7 @@ import math
 from tqdm import tqdm
 from events_contrast_maximization.utils.event_utils import binary_search_h5_dset
 
-root = 'data/new/real'
+root = 'data/E2PD/new'
 
 print(f'creating h5 merged files')
 
@@ -33,17 +33,20 @@ for aedat_name in tqdm(list):
     frame_idx_path = os.path.join(root, name + '-frame_idx.txt')
 
     # read events
-    print(f'loading events from {events_path}...',end=None)
+    print(f'loading events from {events_path}...',end='')
     events = np.loadtxt(events_path, dtype=np.float128)
     print('done')
+    # print('removing nonmonotonic events at start')
+    print('rescaling timestamps and reformatting events...',end='')
     events = events * [1e6, 1, 1, 1]
     events = (events - [0, 0, 259, 0]) * [1, 1, -1, 1]
     events = events.astype(np.uint32)
+    print('done')
     print('--------- events ------------')
     print(f'events.shape={events.shape} events.dtype={events.dtype}')
 
     # read frame
-    print(f'loading frames from {image_dir}...',end=None)
+    print(f'loading frames from {image_dir}...',end='')
     image_list = sorted(os.listdir(image_dir))
     image_list = image_list[1:]
     i = 0

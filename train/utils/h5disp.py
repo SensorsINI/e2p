@@ -12,7 +12,7 @@ import os
 import cv2
 import h5py
 import numpy as np
-
+from easygui import fileopenbox
 # dir = '/home/mhy/v2e/output/subject09_group1_time1'
 # name = 'e.h5'
 
@@ -20,9 +20,9 @@ import numpy as np
 
 # path = '/home/mhy/firenet-pdavis/data/raw_demosaicing_polarization_5s_iad/004103_iad.h5'
 # path = '/home/mhy/aedat2pvideo/aedat/real/UIUC_183_121_196_134_RPM_800-events.h5'
-path = '/home/mhy/firenet-pdavis/data/real/real-01.h5'
+# path = '/home/mhy/firenet-pdavis/data/real/real-01.h5'
 # path = '/home/mhy/firenet-pdavis/data/raw_demosaicing_polarization_5s_iad/004000_iad.h5'
-
+path=fileopenbox('select h5 file to view','select H5')
 # path = '/home/mhy/data/beetles/22June-20220623T122254Z-001/22June_h5/Davis346B-2022-06-22T14-22-51-0500-INLX0008-0.h5'
 
 f = h5py.File(path, 'r')

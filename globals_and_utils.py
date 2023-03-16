@@ -177,7 +177,7 @@ def yes_or_no(question, default='y', timeout=None):
 timers = {}
 times = {}
 class Timer:
-    def __init__(self, timer_name='', delay=None, show_hist=False, numpy_file=None):
+    def __init__(self, timer_name='', delay=None, show_hist=False, numpy_file=None, savefig=True):
         """ Make a Timer() in a _with_ statement for a block of code.
         The timer is started when the block is entered and stopped when exited.
         The Timer _must_ be used in a with statement.
@@ -185,10 +185,12 @@ class Timer:
         :param timer_name: the str by which this timer is repeatedly called and which it is named when summary is printed on exit
         :param delay: set this to a value to simply accumulate this externally determined interval
         :param show_hist: whether to plot a histogram with pyplot
+        :param savefig: whether to save PDF of histogram; it is saved to timer_name_timing_histogram.pdf
         :param numpy_file: optional numpy file path
         """
         self.timer_name = timer_name
         self.show_hist = show_hist
+        self.savefig = savefig
         self.numpy_file = numpy_file
         self.delay=delay
 
@@ -255,7 +257,7 @@ def print_timing_info():
             except Exception as e:
                 log.error(f'could not save numpy file {timers[timer].numpy_file}; caught {e}')
 
-        if timers[timer].show_hist:
+        if timers[timer].show_hist or timers[timer].savefig:
 
             def plot_loghist(x, bins):
                 hist, bins = np.histogram(x, bins=bins) # histogram x linearly
@@ -273,6 +275,10 @@ def print_timing_info():
                 plt.xlabel('interval[ms]')
                 plt.ylabel('frequency')
                 plt.title(timer)
+                if timers[timer].savefig:
+                    fn=timers[timer].timer_name+'_timer_hist.pdf'
+                    plt.savefig(fn)
+                    log.info(f'saved timing histogram to {fn}')
                 plt.show()
             except Exception as e:
                 log.error(f'could not plot histogram: got {e}')

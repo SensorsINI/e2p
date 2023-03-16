@@ -12,7 +12,7 @@ import os
 from tqdm import tqdm
 from dv import LegacyAedatFile
 
-root = 'data/real'
+root = 'data/E2PD/new'
 
 aedat_list = sorted([x for x in os.listdir(root) if x.endswith('.aedat')])
 for name in tqdm(aedat_list):

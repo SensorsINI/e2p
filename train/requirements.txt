@@ -11,3 +11,4 @@ dv
 tensorboardx
 IPython
 moviepy
+easygui # fileopen dialog 

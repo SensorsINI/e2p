@@ -11,7 +11,7 @@
 import os
 from tqdm import tqdm
 
-root = './data/new/real'
+root = './data/E2PD/new'
 # make a symlink to installed jaer folder in ..
 # e.g.
 # ln -s /home/tobi/Dropbox/GitHub/SensorsINI/jaer/ ../jaer
