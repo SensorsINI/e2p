@@ -24,7 +24,8 @@ learned_perceptual_image_patch_similarity = lpips.LPIPS(net='vgg').cuda()
 lpips_flag = True
 # lpips_flag = False
 
-gt_root = '/home/mhy/firenet-pdavis/output/v_test_gt'
+# gt_root = '/home/mhy/firenet-pdavis/output/v_test_gt'
+gt_root = './output_synthetic/gt'
 
 # method = 'firenet_direction_iad'
 # method = 'e2vid_direction_iad'
@@ -37,11 +38,14 @@ gt_root = '/home/mhy/firenet-pdavis/output/v_test_gt'
 # method = 'v16_b_c16_s_73'
 # method = 'v16_b_c16_2'
 # method = 'v16_b_c16_i_30'
-method = 'v16_so_2'
+# method = 'v16_so_2'
+method = 'e2p'
 print(method)
-prediction_root = '/home/mhy/firenet-pdavis/output/' + method
+# prediction_root = '/home/mhy/firenet-pdavis/output/' + method
+prediction_root = './output_synthetic/' + method
 # prediction_root = '/home/mhy/firenet-pdavis/output_ablation/' + method
-txt_path = '/home/mhy/firenet-pdavis/txt_eval/' + method + '.txt'
+# txt_path = '/home/mhy/firenet-pdavis/txt_eval/' + method + '.txt'
+txt_path = './txt_eval/' + method + '.txt'
 
 video_list = [x for x in os.listdir(gt_root) if not x.endswith('.avi')]
 video_list = sorted(video_list)
