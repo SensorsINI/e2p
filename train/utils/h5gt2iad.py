@@ -21,13 +21,13 @@ def check_mkdir(dir_name):
 # input_root = '/home/mhy/firenet-pdavis/data/raw_demosaicing_polarization_5s_iad'
 # output_root = '/home/mhy/firenet-pdavis/output/v_test_gt'
 # check_mkdir(output_root)
-input_root = '/home/mhy/firenet-pdavis/data/real'
-output_root = '/home/mhy/firenet-pdavis/output_real_33ms/test_gt'
+input_root = 'train/data/E2PD/h5new/Davis346B-2023-03-16T15-42-43+0100-00000000-0-pdavis-polfilter-tobi-office-window3.h5'
+output_root = 'output_test/test_gt'
 check_mkdir(output_root)
 
 # test txt
 # test_list_txt = '/home/mhy/firenet-pdavis/data/movingcam/test_5s.txt'
-test_list_txt = '/home/mhy/firenet-pdavis/data/movingcam/test_real2.txt'
+test_list_txt = 'data/movingcam/test_real2.txt'
 with open(test_list_txt, 'r') as f:
     test_list = [line.strip() for line in f]
 

@@ -13,7 +13,8 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
-root = '/home/mhy/firenet-pdavis/output/firenet_direction_iad'
+# set root same as in [h5gt2iad.py](utils%2Fh5gt2iad.py)
+root = 'train/output/test_output'
 # root = '/home/mhy/firenet-pdavis/output/v_test_gt'
 # root = '/home/mhy/firenet-pdavis/output/v5'
 output_dir = root
