@@ -284,7 +284,8 @@ def print_timing_info():
                     fn=os.path.join('timer_plots', timers[timer].timer_name+'_timer_hist.pdf')
                     plt.savefig(fn)
                     log.info(f'saved timing histogram to {fn}')
-                plt.show()
+                if timers[timer].show_hist:
+                    plt.show()
             except Exception as e:
                 log.error(f'could not plot histogram: got {e}')
 
@@ -308,5 +309,5 @@ def write_next_image(dir:str, idx:int, img):
     return idx
 
 # this will print all the timer values upon termination of any program that imported this file
-atexit.register(print_timing_info)
+# atexit.register(print_timing_info)
 

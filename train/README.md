@@ -92,5 +92,9 @@ Steps are illustrated below.
   - ./txt_eval/e2p.txt
 
 ### Dataset Visualization
-- `python utils/h5gt2iad.py`
-- `python visualize_pvideo.py`
+Process a list of files set at start of [h5gt2iad.py](utils%2Fh5gt2iad.py) in line: 
+`test_list_txt = 'train/data/movingcam/test_real2.txt'`
+- `python utils/h5gt2iad.py` [h5gt2iad.py](utils%2Fh5gt2iad.py)
+
+Turn these into movies with [visualize_pvideo.py](visualize_pvideo.py). Edit the line near start to point to the correct folder: 
+- `python visualize_pvideo.py` 

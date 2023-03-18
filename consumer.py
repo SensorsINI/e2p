@@ -267,7 +267,7 @@ if __name__ == '__main__':
             model.reset_states_a()
             model.reset_states_d()
         timestr = time.strftime("%Y%m%d-%H%M")
-        with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=True, savefig=True):
+        with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=False, savefig=True):
             with Timer('receive UDP'):
                 receive_data = server_socket.recv(UDP_BUFFER_SIZE)
 
@@ -300,8 +300,6 @@ if __name__ == '__main__':
 
             # save time since frame sent from producer
             dt=time.time()-timestamp
-            with Timer('producer->consumer inference delay', delay=dt, show_hist=True):
-                pass
 
             k = cv2.waitKey(1) & 0xFF
             if k == ord('q') or k==ord('x'):
@@ -326,3 +324,6 @@ if __name__ == '__main__':
         print(model)
         print('[Statistics Information]\nFLOPs: {}\nParams: {}'.format(flops, params))
         exit(0)
+
+    print_timing_info()
+    print(f'****** done running model {args.checkpoint_path}')
