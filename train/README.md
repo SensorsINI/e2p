@@ -80,8 +80,8 @@ Steps are illustrated below.
 - split the visual comparison results
   - `python split_visual3.py`
 - output location
-  - ./output_e2p
-  - ./output_real
+  - ./output_synthetic/e2p
+  - ./output_real/e2p
 
 ### Evaluation
 - obtain the ground truth from h5 file
