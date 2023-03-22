@@ -18,24 +18,18 @@ def check_mkdir(dir_name):
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
 
-# input_root = '/home/mhy/firenet-pdavis/data/raw_demosaicing_polarization_5s_iad'
-# output_root = '/home/mhy/firenet-pdavis/output/v_test_gt'
+# input_root = './data/E2PD/synthetic'
+# output_root = './output_synthetic/gt'
 # check_mkdir(output_root)
-input_root = './data/E2PD/synthetic'
-output_root = './output_synthetic/gt'
+input_root = './data/E2PD/real'
+output_root = './output_real/gt'
 check_mkdir(output_root)
-# input_root = '/home/mhy/firenet-pdavis/data/real'
-# output_root = '/home/mhy/firenet-pdavis/output_real_33ms/test_gt'
-# check_mkdir(output_root)
 
 # test txt
-# test_list_txt = '/home/mhy/firenet-pdavis/data/movingcam/test_5s.txt'
-# test_list_txt = '/home/mhy/firenet-pdavis/data/movingcam/test_real2.txt'
 test_list_txt = './data/E2PD/test.txt'
 with open(test_list_txt, 'r') as f:
     test_list = [line.strip() for line in f]
 
-# dir_list = os.listdir(input_root)
 dir_list = test_list[:29]
 
 for name in tqdm(dir_list):

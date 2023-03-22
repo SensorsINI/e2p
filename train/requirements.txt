@@ -4,7 +4,7 @@ tqdm
 pandas
 h5py
 numpy==1.22.2
-scikit-image
+scikit-image==0.19.0
 pytorch_msssim
 timm
 dv
@@ -12,3 +12,4 @@ tensorboardx
 IPython
 moviepy
 easygui # fileopen dialog 
+lpips
