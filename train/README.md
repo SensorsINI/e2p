@@ -22,8 +22,18 @@
 - `apt-get update`
 - `apt-get install libgl1`
 
+### Downloads
+- E2PD
+  - [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1tWpU-N0lmKv36x?e=oIEajs) ] or [ [Baidu Disk](https://pan.baidu.com/s/1JSZqcbFk_52Xd_Ex_bicmQ?pwd=e2pd), fetch code: e2pd ]
+- Models
+  - FireNet [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1-Cnb7Fh_-xZsNR?e=fEdTHJ) ] or [ [Baidu Disk](https://pan.baidu.com/s/1DVEwX8Ax9OSO-_ZpDCEjSw?pwd=ckpt), fetch code: ckpt ]
+  - E2P [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm15aBBmch2qjRL9U?e=Dc9boq) ] or [ [Baidu Disk](https://pan.baidu.com/s/1zfAI2HViEA7ek_8JqRVSQQ?pwd=ckpt), fetch code: ckpt ]
+- Results
+  - Synthetic [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm2CEZ8vgOVBtFWbP?e=Scss5J) ] or [ [Baidu Disk](https://pan.baidu.com/s/1HAWaFTgMs2t-6hmZWJwBSA?pwd=outs), fetch code: outs ]
+  - Real [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm10gPsk9ao3Fqh0s?e=93jX0S) ] or [ [Baidu Disk](https://pan.baidu.com/s/1IIdLL7ZNR-5Ne1FW8M0LwQ?pwd=outr), fetch code: outr ]
+
 ### Using E2PD
-Download E2PD from [ [Onedrive](https://1drv.ms/u/s!AjYBkUJACkBLm1tWpU-N0lmKv36x?e=oIEajs) ] or [ [Baidu Disk](https://pan.baidu.com/s/1JSZqcbFk_52Xd_Ex_bicmQ?pwd=e2pd), fetch code: e2pd ] and unzip it to ./data/ folder
+Unzip E2PD.zip to ./data/ folder
 
 - txt file location
   - ./data/E2PD/train.txt
