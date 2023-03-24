@@ -52,7 +52,7 @@ Unzip E2PD.zip to ./data/ folder
   - Click the "StartRecordingAndSaveAs" button and choose output file with .txt extension; you can select the ./data/new/real/...timecode.txt file and delete the timecode part.
     - (** Because of bug in DavisTextOutputWriter, it is essential to open the output xxx-events.txt and delete the first _n_ rows as they are duplicated. __n__ will be large number of perhaps 10k lines! **. If you don't do this you will get bogus timestamps that mess up the synchronization between events and frames and the training will have meaningless GT target.)
     - (** To find how many rows are duplicated, we can check the timestamp of the first frame in xxx-timecode.txt and then use this timestamp to find where the timestamp discontinuity appears in xxx-events.txt **)
-    - ![write-events-txt-file.png](write-events-txt-file.png)
+    - ![write-events-txt-file.png](train/media/write-events-txt-file.png)
 - convert avi to frames with [my_video2frame.py](my_video2frame.py)
   - `python my_video2frame.py`
 - merge events, frame, frame_idx, frame_ts, intensity, aolp, dolp into one hdf5 file for the use of DNN using [my_merge_h5.py](my_merge_h5.py)
@@ -76,7 +76,18 @@ Steps are illustrated below.
 2.  It points to  [train.txt](data%2FE2PD%2Ftrain.txt) which lists the training input files.
 3. These files must be at the locations listed in train.txt
 
-![train_steps.png](train_steps.png)
+![train_steps.png](train/media/train_steps.png)
+
+#### Using tensorboard to visualize training
+
+![tensorboard_output.png](media%2Ftensorboard_output.png)
+
+* Last two rows are predictions and ground truth.
+* Left is intensity, middle is aolp and right is dolp,
+* For dolp yellow means high degree. black/dark red is low degree.
+* For aolp, 0 means -pi/2, 1 means pi/2, 0 angle is horizontally polarized light.
+
+![aolp mapping.png](..%2Fmedia%2Faolp%20mapping.png)
 
 ### Test
 - test e2p model
