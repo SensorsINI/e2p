@@ -12,7 +12,6 @@ import os
 import cv2
 import h5py
 import numpy as np
-from easygui import fileopenbox
 # dir = '/home/mhy/v2e/output/subject09_group1_time1'
 # name = 'e.h5'
 

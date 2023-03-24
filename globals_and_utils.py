@@ -83,11 +83,11 @@ LOGGING_LEVEL = logging.INFO
 WARNING_INTERVAL=30 # show first this many warnings and then only every this many
 
 # EVENT_COUNT_PER_FRAME = 2300  # events per frame
-BIASES_CONFIG_FILE="./configs/davis346_config.json"
+BIASES_CONFIG_FILE='configs/davis346_sensitive_slow.json' # "./configs/davis346_config.json"
 # EVENT_DURATION = 100000  # events per voxel frame
 FLEX_TIME_MODE=False # True -> constant-count voxel volume, False -> constant-duration
 FRAME_COUNT_EVENTS=50000 # default for constant-count volume entire voxel volume fed to DNN
-FRAME_DURATION_US = 50000  # default for constant-duration entire voxel volume fed to DNN
+FRAME_DURATION_US = 80000  # default for constant-duration entire voxel volume fed to DNN
 NUM_BINS = 5 # number of bins for event voxel (frames), must be 5
 SENSOR_RESOLUTION = (260, 346) # sensor resolution in pixels, vertical, horizontal
 IMSIZE = 224  # CNN input image size, must be small enough that single frame of bytes is less than 64kB for UDP
@@ -110,7 +110,7 @@ SRC_DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'source_data') #'/home/tobi/Down
 TRAIN_DATA_FOLDER=os.path.join(ROOT_DATA_FOLDER,'training_dataset') #'/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
 
 USE_FIRENET=False # True to use firenet DNN from Cedric, False to use e2p DNN
-E2P_MODEL='./e2p.pth'
+E2P_MODEL= 'models/e2p_model_best_0317_2154.pth' # 'models/e2ptobi-data.pth' #'./e2p.pth'
 FIRENET_MODEL='./firenet/ckpt/firenet_1000.pth.tar'
 
 import signal

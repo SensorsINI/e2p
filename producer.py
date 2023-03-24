@@ -80,7 +80,7 @@ def producer(args):
     print("DVS USB device address:", device.device_usb_device_address)
     print("DVS size X:", device.dvs_size_X)
     print("DVS size Y:", device.dvs_size_Y)
-    print("Logic Version:", device.logic_version)
+    print("Logic Version--checkpoint_path=models/checkpoint-epoch106.pth:", device.logic_version)
     print("Background Activity Filter:",
           device.dvs_has_background_activity_filter)
     print("Color Filter", device.aps_color_filter, type(device.aps_color_filter))
@@ -88,33 +88,34 @@ def producer(args):
     # device.start_data_stream()
     assert (device.send_default_config())
     # attempt to set up USB host buffers for acquisition thread to minimize latency
-    assert (device.set_config(
-        libcaer.CAER_HOST_CONFIG_USB,
-        libcaer.CAER_HOST_CONFIG_USB_BUFFER_NUMBER,
-        8))
-    assert (device.set_config(
-        libcaer.CAER_HOST_CONFIG_USB,
-        libcaer.CAER_HOST_CONFIG_USB_BUFFER_SIZE,
-        64000))
+    # assert (device.set_config(
+    #     libcaer.CAER_HOST_CONFIG_USB,
+    #     libcaer.CAER_HOST_CONFIG_USB_BUFFER_NUMBER,
+    #     8))
+    # assert (device.set_config(
+    #     libcaer.CAER_HOST_CONFIG_USB,
+    #     libcaer.CAER_HOST_CONFIG_USB_BUFFER_SIZE,
+    #     64000))
     assert (device.data_start())
-    assert (device.set_config(
-        libcaer.CAER_HOST_CONFIG_PACKETS,
-        libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
-        10000)) # set max interval to this value in us. Set to not produce too many packets/sec here, not sure about reasoning
+    # assert (device.set_config(
+    #     libcaer.CAER_HOST_CONFIG_PACKETS,
+    #     libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
+    #     10000)) # set max interval to this value in us. Set to not produce too many packets/sec here, not sure about reasoning
     assert (device.set_data_exchange_blocking())
 
     # setting bias after data stream started
+    log.info(f'setting biases from {BIASES_CONFIG_FILE}')
     device.set_bias_from_json(BIASES_CONFIG_FILE)
     biases_config_file_path=Path(BIASES_CONFIG_FILE)
     biases_mtime=biases_config_file_path.stat().st_mtime  # get modification time of config
 
 
 
-    if space_toggles_recording and spacebar_records:
+    if record is not None and space_toggles_recording and spacebar_records:
         log.error('set either --spacebar_records or --space_toggles_recording')
         quit(1)
-    log.info(f'recording to {record} with spacebar_records={spacebar_records} space_toggles_recording={space_toggles_recording} and args {str(args)}')
     if record is not None:
+        log.info(f'recording to {record} with spacebar_records={spacebar_records} space_toggles_recording={space_toggles_recording} and args {str(args)}')
         recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
         log.info(f'recording frames to {recording_folder}')
         Path(recording_folder).mkdir(parents=True, exist_ok=True)
@@ -158,6 +159,7 @@ def producer(args):
                                 events=pol_events
                             else:
                                 events = np.vstack([events, pol_events]) # otherwise tack new events to end
+                        time.sleep(0.001) # yield
 
                 # log.debug('got {} events (total so far {}/{} events)'
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
@@ -279,7 +281,7 @@ def producer(args):
                                 else:
                                     recording_activated=not recording_activated
                                     if recording_activated:
-                                        print('recording activated - use space to stop recording\n')
+                                        recordprint('recording activated - use space to stop recording\n')
                                     else:
                                         print('recording paused - use space to start recording\n')
                                     save_next_frame=recording_activated

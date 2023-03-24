@@ -207,7 +207,10 @@ def get_height_width(data_loader):
 
 
 def torch2cv2(image):
-    """convert torch tensor to format compatible with cv2.imwrite"""
+    """convert torch tensor to format compatible with cv2.imwrite
+    :param image: a mono image in range 0-1 (values outside this range are clipped to 0-1 range)
+    :returns: the image as type uint8 scaled to range 0-255.
+    """
     image = torch.squeeze(image)  # H x W
     image = image.cpu().numpy()
     image = np.clip(image, 0, 1)

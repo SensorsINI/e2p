@@ -3,7 +3,7 @@ opencv-python==4.5.5.64
 tqdm
 pandas
 h5py
-numpy==1.22.2
+numpy==1.24.2
 scikit-image
 pytorch_msssim
 timm
@@ -14,3 +14,4 @@ pyserial
 pyzmq
 thop
 IPython
+easygui

@@ -21,7 +21,7 @@ from select import select
 from thop import profile, clever_format
 
 from globals_and_utils import *
-from engineering_notation import EngNumber as eng # only from pip
+from engineering_notation import EngNumber as eng  # only from pip
 import collections
 from pathlib import Path
 import random
@@ -29,12 +29,13 @@ import random
 # for network inference
 import torch
 from utils.util import torch2cv2, torch2numpy, numpy2cv2
+from easygui import fileopenbox
 
-log=get_logger()
+log = get_logger()
 
 # Only used in mac osx
 try:
-    os.environ['KMP_DUPLICATE_LIB_OK']='True'
+    os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 except Exception as e:
     print(e)
 
@@ -45,8 +46,12 @@ from parse_config import ConfigParser
 
 model_info = {}
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+if device == 'cpu':
+    log.warning(f'CUDA GPU is not available, running on CPU which will be very slow')
+    time.sleep(1)
 states = None  # firenet states, to feed back into firenet
 model = None
+
 
 def print_key_help():
     print('producer keys to use in cv2 image window:\n'
@@ -88,6 +93,7 @@ def load_e2p_model(checkpoint):
     # logger = config.get_logger('test')
 
     # build model architecture
+    print('loading model ....')
     model = config.init_obj('arch', model_arch)
     log.info(model)
     if config['n_gpu'] > 1:
@@ -104,8 +110,10 @@ def load_e2p_model(checkpoint):
 
     return model
 
+
 def compute_firenet_output(input):
-    output, states = model(input, states)  # TODO not correct, should build voxel grid for each polarization channel and run on each independently
+    output, states = model(input,
+                           states)  # TODO not correct, should build voxel grid for each polarization channel and run on each independently
 
     # original firenet
     image = torch2numpy(output)
@@ -134,34 +142,63 @@ def compute_firenet_output(input):
     aolp = cv2.applyColorMap(aolp, cv2.COLORMAP_HSV)
     dolp = cv2.applyColorMap(dolp, cv2.COLORMAP_HOT)
 
-    return intensity,aolp,dolp
+    return intensity, aolp, dolp
+
+
+def norm_max_min(v):
+    max = np.max(v)
+    min = np.min(v)
+    v = (v - min) / (max - min + 1e-5) * 255
+    return v
+
 
 def compute_e2p_output(output):
     intensity = torch2cv2(output['i'])
-    aolp = torch2cv2(output['a'])
+    aolp = torch2cv2(output['a']) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
     dolp = torch2cv2(output['d'])
 
-    max = np.max(intensity)
-    min = np.min(intensity)
-    intensity = (intensity - min) / (max - min) * 255
-    intensity = np.repeat(intensity[:, :, None], 3, axis=2).astype(np.uint8)
+    # #visualizing aolp, dolp on tensorboard, tensorboard takes rgb values in [0,1]
+    # this makes visualization work correctly in tensorboard.
+    # a lot of ugly formatting things to make cv2 output compatible with matplotlib.
+    # first scale to [0,255] then convert to colormap_hsv,
+    # then swap axis to make bgr to rgb otherwise the color is reversed.
+    # then last convert the rgb color back to [0,1] for tensorboard....
+    # imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(pred_aolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HSV), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
+    # imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(pred_dolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HOT), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
+
+    # https://stackoverflow.com/questions/50963283/imshow-doesnt-need-convert-from-bgr-to-rgb
+    # no need to convert since we use cv2 to render to screen
+    # intensity = norm_max_min(intensity)
+    intensity = np.repeat(intensity[:, :, None], 3, axis=2).astype(np.uint8) # need to duplicate mono channels to make compatible with aolp and dolp
+    # aolp = norm_max_min(aolp) # doesn't make sense to scale aolp to range of data
     aolp = cv2.applyColorMap(aolp, cv2.COLORMAP_HSV)
+    # dolp=norm_max_min(dolp)
     dolp = cv2.applyColorMap(dolp, cv2.COLORMAP_HOT)
-    return intensity,aolp,dolp
+    return intensity, aolp, dolp
 
 
 def load_selected_model(args):
+    if args.browse_checkpoint:
+        f = fileopenbox(msg='select model checkpoint', title='Model checkpoint', default='models/*.pth',
+                        filetypes=['*.pth'])
+        if f is not None:
+            args.checkpoint_path = f
+
     # initial network model
     if not args.use_firenet:
-        path=E2P_MODEL if args.checkpoint_path is None else args.checkpoint_path
+        path = E2P_MODEL if args.checkpoint_path is None else args.checkpoint_path
         log.info(f'checkpoint model path is {path}')
+        p = Path(path)
+        if not p.exists():
+            raise FileNotFoundError(f'model --checkpoint_path={args.checkpoint_path} does not exist')
+        print('loading model with torch.load()')
         checkpoint = torch.load(path)
         args, checkpoint = legacy_compatibility(args, checkpoint)
         model = load_e2p_model(checkpoint)
-    else: # load firenet
+    else:  # load firenet
         from rpg_e2vid.utils.loading_utils import load_model as load_firenet_model
-        path=FIRENET_MODEL if args.checkpoint_path is None else args.checkpoint_path
-        model=load_firenet_model(path)
+        path = FIRENET_MODEL if args.checkpoint_path is None else args.checkpoint_path
+        model = load_firenet_model(path)
         model = model.to(device)
         model.eval()
         for param in model.parameters():
@@ -173,8 +210,12 @@ def load_selected_model(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='consumer: Consumes DVS frames to process', allow_abbrev=True,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--use_firenet', action='store_true', default=USE_FIRENET, help='use (legacy) firenet instead of e2p')
-    parser.add_argument('--checkpoint_path', type=str, default=None, help='path to latest checkpoint, if not specified, uses E2P_MODEL global')
+    parser.add_argument('--use_firenet', action='store_true', default=USE_FIRENET,
+                        help='use (legacy) firenet instead of e2p')
+    parser.add_argument('--checkpoint_path', type=str, default=None,
+                        help='path to latest checkpoint, if not specified, uses E2P_MODEL global')
+    parser.add_argument('--browse_checkpoint', action='store_true', default=False,
+                        help='open file dialog to select model checkpoint')
     parser.add_argument('--output_folder', default="/tmp/output", type=str,
                         help='where to save outputs to')
     parser.add_argument('--height', type=int, default=260,
@@ -234,13 +275,14 @@ if __name__ == '__main__':
     address = ("", PORT)
     server_socket.bind(address)
 
-    model=load_selected_model(args)
+    model = load_selected_model(args)
 
     log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to receive the {IMSIZE}x{IMSIZE} images')
 
     cv2_resized = dict()
 
     log.info('GPU is {}'.format('available' if args.device is not None else 'not available (check cuda setup)'))
+
 
     def show_frame(frame, name, resized_dict):
         """ Show the frame in named cv2 window and handle resizing
@@ -256,7 +298,8 @@ if __name__ == '__main__':
             # wait minimally since interp takes time anyhow
             cv2.waitKey(1)
 
-    last_frame_number=0
+
+    last_frame_number = 0
     voxel_five_float32 = np.zeros((NUM_BINS, IMSIZE, IMSIZE))
     c = 0
     print_key_help()
@@ -267,7 +310,8 @@ if __name__ == '__main__':
             model.reset_states_a()
             model.reset_states_d()
         timestr = time.strftime("%Y%m%d-%H%M")
-        with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy', show_hist=False, savefig=True):
+        with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy',
+                   show_hist=False, savefig=True):
             with Timer('receive UDP'):
                 receive_data = server_socket.recv(UDP_BUFFER_SIZE)
 
@@ -276,44 +320,43 @@ if __name__ == '__main__':
                 if x == 0:
                     voxel_five_float32 = np.zeros((1, NUM_BINS, IMSIZE, IMSIZE))
                     c = 0
-                dropped_frames=frame_number-last_frame_number-1
-                if dropped_frames>0:
+                dropped_frames = frame_number - last_frame_number - 1
+                if dropped_frames > 0:
                     log.warning(f'Dropped {dropped_frames} frames from producer')
-                last_frame_number=frame_number
+                last_frame_number = frame_number
                 voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1
                 voxel_five_float32[:, x, :, :] = voxel_float32
                 c += 1
             if c == NUM_BINS:
                 with Timer('run CNN', savefig=True):
-                    input=torch.from_numpy(voxel_five_float32).float().to(device)
-                    if not args.use_firenet: # e2p, just use voxel grid from producer
+                    input = torch.from_numpy(voxel_five_float32).float().to(device)
+                    if not args.use_firenet:  # e2p, just use voxel grid from producer
                         output = model(input)
-                        intensity, aolp, dolp=compute_e2p_output(output)
-                    else: # firenet, we need to extract the 4 angle channels and run firenet on each one
+                        intensity, aolp, dolp = compute_e2p_output(output)
+                    else:  # firenet, we need to extract the 4 angle channels and run firenet on each one
 
-                        intensity, aolp, dolp=compute_firenet_output(input)
-
+                        intensity, aolp, dolp = compute_firenet_output(input)
 
                 with Timer('show output frame'):
                     image = cv2.hconcat([intensity, aolp, dolp])
                     show_frame(image, 'polarization', cv2_resized)
 
             # save time since frame sent from producer
-            dt=time.time()-timestamp
+            dt = time.time() - timestamp
 
             k = cv2.waitKey(1) & 0xFF
-            if k == ord('q') or k==ord('x'):
+            if k == ord('q') or k == ord('x'):
                 print('quitting....')
                 break
             elif k == ord('h') or k == ord('?'):
                 print_key_help()
             elif k == ord('p'):
                 print_timing_info()
-            elif k==ord('m'):
-                args.use_firenet= not args.use_firenet
+            elif k == ord('m'):
+                args.use_firenet = not args.use_firenet
                 model = load_selected_model(args)
                 print(f' changed mode to args.use_firenet={args.use_firenet}')
-            elif k!=255:
+            elif k != 255:
                 print_key_help()
                 print(f'unknown key {k}')
 
