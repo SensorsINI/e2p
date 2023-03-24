@@ -156,7 +156,7 @@ def producer(args):
                         pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
                         if num_pol_event>0:
                             if events is None:
-                                events=pol_events
+                                events=pol_events # events[:,x] where for x 0 is time, 1 and 2 are x and y, 3rd is polarity ON/OFF
                             else:
                                 events = np.vstack([events, pol_events]) # otherwise tack new events to end
                         time.sleep(0.001) # yield
@@ -202,12 +202,13 @@ def producer(args):
 
                 # voxelization for network inference
                 with Timer('computing voxels from events'):
-                    xs = torch.from_numpy(events[:, 1].astype(np.float32))
-                    ys = torch.from_numpy(events[:, 2].astype(np.float32))
-                    ts = torch.from_numpy((events[:, 0] - events[0, 1]).astype(np.float32))
-                    ps = torch.from_numpy((events[:, 3] * 2 - 1).astype(np.float32))
+                    # events[:,x] where for x, 0 is time, 1 and 2 are x and y, 3rd is polarity ON/OFF
+                    xs = torch.from_numpy(events[:, 1].astype(np.float32)) # event x addreses
+                    ys = torch.from_numpy(events[:, 2].astype(np.float32)) # event y addresses
+                    ts = torch.from_numpy((events[:, 0] - events[0, 0]).astype(np.float32)) # event relative timesamps in us
+                    ps = torch.from_numpy((events[:, 3] * 2 - 1).astype(np.float32)) # change polarity from 0,1 to -1,+1
                     voxel = events_to_voxel_torch(xs, ys, ts, ps, num_bins, sensor_size=sensor_resolution, temporal_bilinear=True) # TODO temporal_bilinear=False broken
-                    voxel = (((voxel + 1) / 2) * 255)
+                    voxel = (((voxel + 1) / 2) * 255) # map 0-1 range  to 0-255 range for uint8 xfer to consumer
                     voxel = voxel[:, 0:IMSIZE, 0:IMSIZE] # crop out UL corner from entire voxel frame to limit to max possible UDP packet size
                     voxel_224 = voxel.numpy().astype('uint8')
                     # The DNN is trained with 112x112 but can test on 346x260. We crop it to 224x224 to enable UDP transfer otherwise it will be too large.

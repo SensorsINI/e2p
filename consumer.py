@@ -324,7 +324,7 @@ if __name__ == '__main__':
                 if dropped_frames > 0:
                     log.warning(f'Dropped {dropped_frames} frames from producer')
                 last_frame_number = frame_number
-                voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1
+                voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1 # map 0-255 range to -1,+1 range
                 voxel_five_float32[:, x, :, :] = voxel_float32
                 c += 1
             if c == NUM_BINS:
