@@ -14,6 +14,7 @@ method = 'e2p'
 
 ckpt_path = '../{}.pth'.format(method)
 
+
 def main(args):
 
     input_path = os.path.join(args.input_dir, args.input_file)
