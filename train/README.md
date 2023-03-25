@@ -34,7 +34,7 @@
 
 ### One Command to Play Back One HDF5 file
 
-- `python infer.py xxx.h5`
+- `python infer.py real-28.h5`
 
 xxx.h5 is the test file in `infer` folder where the corresponding outputs will be saved.
 

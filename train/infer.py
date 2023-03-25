@@ -10,33 +10,49 @@
 """
 import os
 
-root = os.getcwd()
-test_txt = root + '/data/E2PD/test.txt'
-
 method = 'e2p'
 
 ckpt_path = '../{}.pth'.format(method)
 
-with open(test_txt, 'r') as f:
-    list = [line.strip() for line in f]
+def main(args):
 
-synthetic_list = list[:29]
-real_list = list[29:]
+    input_path = os.path.join(args.input_dir, args.input_file)
+    name = args.input_file.split('.')[0]
+    output_dir = os.path.join(args.output_dir, name)
 
-for name in synthetic_list:
-    call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder ./output_synthetic/{}/{}'.format(
-        ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    print(call_with_args)
+    if args.if_real:
+        h = 260
+        w = 346
+    else:
+        h = 480
+        w = 640
 
-    os.system(call_with_args)
-
-for name in real_list:
-    call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real/{}/{}'.format(
-        ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    call_with_args = 'python inference.py --checkpoint_path {} --height {} --width {} --device 0 --events_file_path {} --output_folder {}/{}'.format(
+        h, w, ckpt_path, input_path, output_dir, name)
 
     print(call_with_args)
 
     os.system(call_with_args)
 
 print('Succeed!')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Inference')
+    parser.add_argument('--input_file', required=True, type=str,
+                        help='input file name')
+    parser.add_argument('--input_dir', type=str, default='./infer_input/',
+                        help='path to input hdf5 file (default: None)')
+    parser.add_argument('--output_dir', type=str, default='./infer_output/',
+                        help='path to inference outputs')
+    parser.add_argument('--with_gt', action='store_true',
+                        help='If true, save the frame in the input hdf5 file')
+    parser.add_argument('--if_real', action='store_true',
+                        help='True indicates the input file comes from real PDAVIS')
+
+    args = parser.parse_args()
+
+    main(args)
