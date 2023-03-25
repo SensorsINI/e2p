@@ -30,6 +30,8 @@ import random
 import torch
 from utils.util import torch2cv2, torch2numpy, numpy2cv2
 from easygui import fileopenbox
+from utils.prefs import MyPreferences
+prefs=MyPreferences()
 
 log = get_logger()
 
@@ -179,10 +181,15 @@ def compute_e2p_output(output):
 
 def load_selected_model(args):
     if args.browse_checkpoint:
-        f = fileopenbox(msg='select model checkpoint', title='Model checkpoint', default='models/*.pth',
+        lastmodel=prefs.get('last_model_selected','models/*.pth')
+        f = fileopenbox(msg='select model checkpoint', title='Model checkpoint', default=lastmodel,
                         filetypes=['*.pth'])
         if f is not None:
+            prefs.put('last_model_selected',f)
             args.checkpoint_path = f
+        else:
+            log.warning('no model selected, exiting')
+            quit(0)
 
     # initial network model
     if not args.use_firenet:
