@@ -139,6 +139,7 @@ def producer(args):
     try:
         timestr = time.strftime("%Y%m%d-%H%M")
         numpy_frame_rate_data_file_path = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
+        printed_udp_size=False
         while True:
 
             # check if biases config file changed, if so apply it
@@ -156,7 +157,7 @@ def producer(args):
                         pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
                         if num_pol_event>0:
                             if events is None:
-                                events=pol_events # events[:,x] where for x 0 is time, 1 and 2 are x and y, 3rd is polarity ON/OFF
+                                events=pol_events # events[:,x] where for x 0 is time, 1 and 2 are x and y, 3rd is polarity (OFF,ON)=(0,1) values
                             else:
                                 events = np.vstack([events, pol_events]) # otherwise tack new events to end
                         time.sleep(0.001) # yield
@@ -206,21 +207,30 @@ def producer(args):
                     xs = torch.from_numpy(events[:, 1].astype(np.float32)) # event x addreses
                     ys = torch.from_numpy(events[:, 2].astype(np.float32)) # event y addresses
                     ts = torch.from_numpy((events[:, 0] - events[0, 0]).astype(np.float32)) # event relative timesamps in us
-                    ps = torch.from_numpy((events[:, 3] * 2 - 1).astype(np.float32)) # change polarity from 0,1 to -1,+1
+                    ps = torch.from_numpy((events[:, 3] * 2 - 1).astype(np.float32)) # change polarity from 0,1 to -1,+1 so that polarities are signed
+                    # ps = torch.from_numpy((events[:, 3]).astype(np.float32)) # leave polarities as (0,1) (OFF,ON) values
                     voxel = events_to_voxel_torch(xs, ys, ts, ps, num_bins, sensor_size=sensor_resolution, temporal_bilinear=True) # TODO temporal_bilinear=False broken
-                    voxel = (((voxel + 1) / 2) * 255) # map 0-1 range  to 0-255 range for uint8 xfer to consumer
-                    voxel = voxel[:, 0:IMSIZE, 0:IMSIZE] # crop out UL corner from entire voxel frame to limit to max possible UDP packet size
-                    voxel_224 = voxel.numpy().astype('uint8')
+                    # voxel = (((voxel + 1) / 2) * 255) # map (-1,+1) range to (0,1) range and then to (0,255) range for uint8 xfer to consumer
                     # The DNN is trained with 112x112 but can test on 346x260. We crop it to 224x224 to enable UDP transfer otherwise it will be too large.
+                    voxel = voxel[:, 0:IMSIZE, 0:IMSIZE] # crop out UL corner from entire voxel frame to limit to max possible UDP packet size
+                    pass
 
                 with Timer('sending voxels to consumer'):
                     time_last_frame_sent=time.time()
                     # data = pickle.dumps((frame_number, time_last_frame_sent, voxel[0, :, :])) # send frame_number to allow determining dropped frames in consumer
                     # data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
-                    for x in range(voxel_224.shape[0]): # send bin by bin (really frame by frame) to consumer, each one is 224x224 bytes which is about 50kB, OK for UDP
-                        data = pickle.dumps((frame_number, time_last_frame_sent, x, voxel_224[x, :, :]))
-                        if len(data)>64000:
-                            log.error(f'UDP packet {data} is too large')
+                    for bin in range(NUM_BINS): # send bin by bin (really frame by frame) to consumer, each one is 224x224 bytes which is about 50kB, OK for UDP
+                        frame_float=voxel[bin, :, :].numpy()
+                        frame_min=np.min(frame_float)
+                        frame_max=np.max(frame_float)
+                        frame_255=(((frame_float-frame_min)/(frame_max-frame_min))*255).astype(np.uint8)
+                        data = pickle.dumps((frame_number, time_last_frame_sent, bin, frame_255,frame_min,frame_max))
+                        if not printed_udp_size:
+                            if len(data)>64000:
+                                raise ValueError(f'UDP packet with length {len(data)} is too large')
+                            else:
+                                printed_udp_size=True
+                                log.info(f'UDP packet size for first frame is {len(data)} bytes')
                         frame_number+=1
                         client_socket.sendto(data, udp_address)
 
@@ -238,11 +248,7 @@ def producer(args):
                             # min = np.min(frame)
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
-                            voxel_224_01 = voxel_224 / 255.0
-                            # pad = np.zeros([IMSIZE, 20])
-                            # voxel_five = cv2.hconcat([voxel_224_01[0], pad, voxel_224_01[1], pad, voxel_224_01[2], pad,
-                            #                           voxel_224_01[3], pad, voxel_224_01[4]])
-                            cv2.imshow('DVS', voxel_224_01[-1]) # just show last frame
+                            cv2.imshow('DVS', frame_255) # just show last frame
                             if not cv2_resized:
                                 cv2.resizeWindow('DVS', IMSIZE*2, IMSIZE*2)
                                 cv2_resized = True

@@ -476,8 +476,8 @@ def events_to_voxel_torch(xs, ys, ts, ps, B, device=None, sensor_size=(260, 346)
     ----------
     xs : list of event x coordinates (torch tensor).
     ys : list of event y coordinates (torch tensor).
-    ts : list of event timestamps (torch tensor).
-    ps : list of event polarities (torch tensor).
+    ts : list of event timestamps in seconds (torch tensor).
+    ps : list of event polarities from values (-1,+1) for  OFF/ON events (torch tensor).
     B : number of bins in output voxel grids (int).
     device : device to put voxel grid. If left empty, same device as events.
     sensor_size : the size of the event sensor/output voxels as int tuple (height, width).

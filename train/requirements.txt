@@ -13,3 +13,4 @@ IPython
 moviepy
 easygui # fileopen dialog 
 lpips
+pypref

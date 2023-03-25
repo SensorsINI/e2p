@@ -93,11 +93,11 @@ def load_e2p_model(checkpoint):
     # logger = config.get_logger('test')
 
     # build model architecture
-    print('loading model ....')
     model = config.init_obj('arch', model_arch)
     log.info(model)
     if config['n_gpu'] > 1:
         model = torch.nn.DataParallel(model)
+    log.debug('loading state dictionary ....')
     model.load_state_dict(state_dict)
     log.info('Load my trained weights succeeded!')
 
@@ -191,7 +191,7 @@ def load_selected_model(args):
         p = Path(path)
         if not p.exists():
             raise FileNotFoundError(f'model --checkpoint_path={args.checkpoint_path} does not exist')
-        print('loading model with torch.load()')
+        log.debug('loading model with torch.load()')
         checkpoint = torch.load(path)
         args, checkpoint = legacy_compatibility(args, checkpoint)
         model = load_e2p_model(checkpoint)
@@ -316,16 +316,17 @@ if __name__ == '__main__':
                 receive_data = server_socket.recv(UDP_BUFFER_SIZE)
 
             with Timer('unpickle and normalize/reshape'):
-                (frame_number, timestamp, x, voxel) = pickle.loads(receive_data)
-                if x == 0:
+                (frame_number, timestamp, bin, frame_255,frame_min,frame_max) = pickle.loads(receive_data)
+                if bin == 0:
                     voxel_five_float32 = np.zeros((1, NUM_BINS, IMSIZE, IMSIZE))
                     c = 0
                 dropped_frames = frame_number - last_frame_number - 1
                 if dropped_frames > 0:
                     log.warning(f'Dropped {dropped_frames} frames from producer')
                 last_frame_number = frame_number
-                voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1 # map 0-255 range to -1,+1 range
-                voxel_five_float32[:, x, :, :] = voxel_float32
+                # voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1 # map 0-255 range to -1,+1 range
+                # voxel_five_float32[:, bin, :, :] = voxel.astype(np.float32)
+                voxel_five_float32[:, bin, :, :] = ((frame_255.astype(np.float32))/255)*(frame_max-frame_min)+frame_min
                 c += 1
             if c == NUM_BINS:
                 with Timer('run CNN', savefig=True):

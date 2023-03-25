@@ -17,10 +17,14 @@ import cv2
 import math
 from tqdm import tqdm
 from events_contrast_maximization.utils.event_utils import binary_search_h5_dset
+from easygui import diropenbox
+from utils.prefs import MyPreferences
+prefs=MyPreferences()
+lastfolder=prefs.get('lastaedatfolder','./data/')
+root = diropenbox(msg='select folder with aedat files',title='AEDAT folder',default=lastfolder)
+prefs.put('lastaedatfolder',root)
 
-root = 'data/E2PD/new'
-
-print(f'creating h5 merged files')
+print(f'creating h5 merged files from folder {root}')
 
 list = sorted([x for x in os.listdir(root) if x.endswith('.aedat')])
 
@@ -33,13 +37,25 @@ for aedat_name in tqdm(list):
     frame_idx_path = os.path.join(root, name + '-frame_idx.txt')
 
     # read events
-    print(f'loading events from {events_path}...',end='')
-    events = np.loadtxt(events_path, dtype=np.float128)
-    print('done')
+    print(f'loading events from {events_path} to create HDF5 file {h5_path}...',end='')
+    events = np.loadtxt(events_path, dtype=np.int64)
+    # events is an Nx4 array, ts,x,y,polarity
+    print('checking range of polarities to ensure they are mapped to -1/OFF +1/ON values...')
+    p_min=np.min(events[:,2]) # find min polarity value
+    if p_min==0:
+        events01=True
+    elif p_min==-1:
+        events01=False
+    else:
+        raise ValueError(f'the minimum polarity value {p_min} is not 0 or -1')
+    print(f'done loading events from {events_path}, minimum polarity value detected as {p_min}')
     # print('removing nonmonotonic events at start')
-    print('rescaling timestamps and reformatting events...',end='')
-    events = events * [1e6, 1, 1, 1]
-    events = (events - [0, 0, 259, 0]) * [1, 1, -1, 1]
+    print('rescaling timestamps to seconds')
+    events = events * [1e6, 1, 1, 1] # convert us to seconds
+    if not events01:
+        print('remapping polarity values from values (-1,+1) to values (0,1)')
+        events[:,2]=(events[:,2]+1)/2
+    events = (events - [0, 0, 259, 0]) * [1, 1, -1, 1] # flip y axis upside down since jAER uses LL corner for pixel 0,0
     events = events.astype(np.uint32)
     print('done')
     print('--------- events ------------')
@@ -128,6 +144,6 @@ for aedat_name in tqdm(list):
     output.attrs['sensor_resolution'] = (frame.shape[2], frame.shape[1])
 
     output.close()
-    print(h5_path + ' Conversion Succeed!')
+    print(h5_path + ' Conversion Succeeded!')
 
 print('Nice!')
