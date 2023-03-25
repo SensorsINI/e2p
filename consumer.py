@@ -310,6 +310,7 @@ if __name__ == '__main__':
     voxel_five_float32 = np.zeros((NUM_BINS, IMSIZE, IMSIZE))
     c = 0
     print_key_help()
+    frames_without_drop=0
     while True:
         # todo: reset state after a long period
         if not args.use_firenet:
@@ -318,7 +319,7 @@ if __name__ == '__main__':
             model.reset_states_d()
         timestr = time.strftime("%Y%m%d-%H%M")
         with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy',
-                   show_hist=False, savefig=True):
+                   show_hist=True, savefig=True):
             with Timer('receive UDP'):
                 receive_data = server_socket.recv(UDP_BUFFER_SIZE)
 
@@ -329,14 +330,17 @@ if __name__ == '__main__':
                     c = 0
                 dropped_frames = frame_number - last_frame_number - 1
                 if dropped_frames > 0:
-                    log.warning(f'Dropped {dropped_frames} frames from producer')
+                    log.warning(f'Dropped {dropped_frames} producer frames after {frames_without_drop} good frames')
+                    frames_without_drop=0
+                else:
+                    frames_without_drop+=1
                 last_frame_number = frame_number
                 # voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1 # map 0-255 range to -1,+1 range
                 # voxel_five_float32[:, bin, :, :] = voxel.astype(np.float32)
                 voxel_five_float32[:, bin, :, :] = ((frame_255.astype(np.float32))/255)*(frame_max-frame_min)+frame_min
                 c += 1
             if c == NUM_BINS:
-                with Timer('run CNN', savefig=True):
+                with Timer('run CNN', show_hist=True, savefig=True):
                     input = torch.from_numpy(voxel_five_float32).float().to(device)
                     if not args.use_firenet:  # e2p, just use voxel grid from producer
                         output = model(input)
