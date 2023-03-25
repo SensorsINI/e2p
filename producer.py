@@ -34,7 +34,8 @@ from utils.get_logger import get_logger
 log=get_logger(__name__)
 
 import torch
-from events_contrast_maximization.utils.event_utils import events_to_voxel_torch
+# from events_contrast_maximization.utils.event_utils import events_to_voxel_torch  # WARNING: this function is not the same one used for e2p training
+from train.events_contrast_maximization.utils.event_utils import events_to_voxel_torch  # This one is the same as used for e2p training
 
 
 def producer(args):
