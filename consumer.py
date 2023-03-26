@@ -57,6 +57,7 @@ model = None
 
 def print_key_help():
     print('producer keys to use in cv2 image window:\n'
+          '- or =: decrease or increase the AoLP DoLP mask level'
           'h or ?: print this help\n'
           'p: print timing info\n'
           'space: toggle or turn on while space down recording\n'
@@ -96,12 +97,12 @@ def load_e2p_model(checkpoint):
 
     # build model architecture
     model = config.init_obj('arch', model_arch)
-    log.info(model)
+    # log.info(model)
     if config['n_gpu'] > 1:
         model = torch.nn.DataParallel(model)
-    log.debug('loading state dictionary ....')
+    log.debug('Loading state dictionary ....')
     model.load_state_dict(state_dict)
-    log.info('Load my trained weights succeeded!')
+    log.debug('Loading my trained weights succeeded!')
 
     model = model.to(device)
     model.eval()
@@ -155,9 +156,18 @@ def norm_max_min(v):
 
 
 def compute_e2p_output(output):
+    """ Computes intensity, aolp, dolp outputs from  E2P output
+    :param output: DNN output
+    :returns: intensity, aolp, dolp
+        RGB color 2d images for cv2.imshow to render
+    """
     intensity = torch2cv2(output['i'])
     aolp = torch2cv2(output['a']) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
     dolp = torch2cv2(output['d'])
+    aolp_mask=np.where(dolp<DOLP_AOLP_MASK_LEVEL*255)
+
+    # find the DoLP values that are less than mask value and use them to mask out the AoLP values so they show up as black
+
 
     # #visualizing aolp, dolp on tensorboard, tensorboard takes rgb values in [0,1]
     # this makes visualization work correctly in tensorboard.
@@ -172,9 +182,8 @@ def compute_e2p_output(output):
     # no need to convert since we use cv2 to render to screen
     # intensity = norm_max_min(intensity)
     intensity = np.repeat(intensity[:, :, None], 3, axis=2).astype(np.uint8) # need to duplicate mono channels to make compatible with aolp and dolp
-    # aolp = norm_max_min(aolp) # doesn't make sense to scale aolp to range of data
     aolp = cv2.applyColorMap(aolp, cv2.COLORMAP_HSV)
-    # dolp=norm_max_min(dolp)
+    aolp[aolp_mask]=0
     dolp = cv2.applyColorMap(dolp, cv2.COLORMAP_HOT)
     return intensity, aolp, dolp
 
@@ -194,11 +203,7 @@ def load_selected_model(args):
     # initial network model
     if not args.use_firenet:
         path = E2P_MODEL if args.checkpoint_path is None else args.checkpoint_path
-        log.info(f'checkpoint model path is {path}')
-        p = Path(path)
-        if not p.exists():
-            raise FileNotFoundError(f'model --checkpoint_path={args.checkpoint_path} does not exist')
-        log.debug('loading model with torch.load()')
+        log.info(f'loading checkpoint model path from {path} with torch.load()')
         checkpoint = torch.load(path)
         args, checkpoint = legacy_compatibility(args, checkpoint)
         model = load_e2p_model(checkpoint)
@@ -266,7 +271,7 @@ if __name__ == '__main__':
     parser.add_argument('--calculate_mode', action='store_true', default=False,
                         help='Calculate the parameters and FLOPs.')
     parser.add_argument('--real_data', action='store_true', default=False,
-                        help='currently our own real data has no frame')
+                        help='currentl>y our own real data has no frame')
     parser.add_argument('--direction', default=None, type=str,
                         help='Specify which dataloader will be used for FireNet inference.')
 
@@ -296,6 +301,7 @@ if __name__ == '__main__':
         :param frame: 2d array of float
         :param name: string name for window
         :param resized_dict: dict to hold this frame for resizing operations
+        :param text: text to add at LL corner
         """
         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
         cv2.imshow(name, frame)
@@ -347,9 +353,13 @@ if __name__ == '__main__':
                         intensity, aolp, dolp = compute_e2p_output(output)
                     else:  # firenet, we need to extract the 4 angle channels and run firenet on each one
 
-                        intensity, aolp, dolp = compute_firenet_output(input)
+                        intensity, aolp, dolp, aolp_mask = compute_firenet_output(input)
 
                 with Timer('show output frame'):
+                    mycv2_put_text(intensity, 'intensity')
+                    mycv2_put_text(aolp, 'AoLP')
+                    mycv2_put_text(dolp, 'DoLP')
+
                     image = cv2.hconcat([intensity, aolp, dolp])
                     show_frame(image, 'polarization', cv2_resized)
 
@@ -364,6 +374,12 @@ if __name__ == '__main__':
                 print_key_help()
             elif k == ord('p'):
                 print_timing_info()
+            elif k==ord('-'):
+                DOLP_AOLP_MASK_LEVEL=DOLP_AOLP_MASK_LEVEL*.9
+                print(f'decrased AoLP DoLP mask level to {DOLP_AOLP_MASK_LEVEL}')
+            elif k==ord('='):
+                DOLP_AOLP_MASK_LEVEL=DOLP_AOLP_MASK_LEVEL*(1/.9)
+                print(f'increased AoLP DoLP mask level to {DOLP_AOLP_MASK_LEVEL}')
             elif k == ord('m'):
                 args.use_firenet = not args.use_firenet
                 model = load_selected_model(args)

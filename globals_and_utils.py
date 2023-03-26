@@ -91,6 +91,7 @@ FRAME_DURATION_US = 120000  # default for constant-duration entire voxel volume 
 NUM_BINS = 5 # number of bins for event voxel (frames), must be 5
 SENSOR_RESOLUTION = (260, 346) # sensor resolution in pixels, vertical, horizontal
 IMSIZE = 224  # CNN input image size, must be small enough that single frame of bytes is less than 64kB for UDP
+DOLP_AOLP_MASK_LEVEL=.35 # level of DoLP below which to mask the AoLP value since it is likely not meaningful
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for collecting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
 MIN_PRODUCER_FRAME_INTERVAL_MS=3.0 # inference takes about 15ms for PDAVIS reconstruction and normalization takes 3ms
@@ -110,7 +111,7 @@ SRC_DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'source_data') #'/home/tobi/Down
 TRAIN_DATA_FOLDER=os.path.join(ROOT_DATA_FOLDER,'training_dataset') #'/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
 
 USE_FIRENET=False # True to use firenet DNN from Cedric, False to use e2p DNN
-E2P_MODEL= 'models/e2p_model_best_0317_2154.pth' # 'models/e2ptobi-data.pth' #'./e2p.pth'
+E2P_MODEL= 'models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth' # 'models/e2ptobi-data.pth' #'./e2p.pth'
 FIRENET_MODEL='./firenet/ckpt/firenet_1000.pth.tar'
 
 import signal
@@ -137,6 +138,13 @@ def input_with_timeout(prompt, timeout=30):
     finally:
         if timeout is not None:
             signal.alarm(0) # cancel alarm
+
+def mycv2_put_text(img,text:str, org=(0,10), font=cv2.FONT_HERSHEY_PLAIN, fontScale=.9, color=(255,255,255),thickness=2,):
+    """" Draws text on cv2 image using some defaults
+    :param img: the image to draw on; it will later be rendered with imshow
+    :param text: the line of text to render
+    """
+    cv2.putText(img, text, org, font, fontScale, color, thickness)
 
 def yes_or_no(question, default='y', timeout=None):
     """ Get y/n answer with default choice and optional timeout

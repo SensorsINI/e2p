@@ -250,6 +250,7 @@ def producer(args):
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
                             cv2.imshow('DVS', frame_255) # just show last frame
+                            mycv2_put_text('DVS','last voxel')
                             if not cv2_resized:
                                 cv2.resizeWindow('DVS', IMSIZE*2, IMSIZE*2)
                                 cv2_resized = True
@@ -289,7 +290,7 @@ def producer(args):
                                 else:
                                     recording_activated=not recording_activated
                                     if recording_activated:
-                                        recordprint('recording activated - use space to stop recording\n')
+                                        print('recording activated - use space to stop recording\n')
                                     else:
                                         print('recording paused - use space to start recording\n')
                                     save_next_frame=recording_activated

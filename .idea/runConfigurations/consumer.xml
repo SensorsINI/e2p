@@ -13,7 +13,7 @@
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/consumer.py" />
-    <option name="PARAMETERS" value="--browse_checkpoint" />
+    <option name="PARAMETERS" value="--checkpoint_path=&quot;models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth&quot;" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="false" />
