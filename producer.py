@@ -220,12 +220,13 @@ def producer(args):
                     time_last_frame_sent=time.time()
                     # data = pickle.dumps((frame_number, time_last_frame_sent, voxel[0, :, :])) # send frame_number to allow determining dropped frames in consumer
                     # data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
+                    frame_float=voxel.numpy()
+                    frame_min=np.min(frame_float, axis=(1,2))[:, np.newaxis, np.newaxis] # get the min value per channel/bin, shape should be (bin,1,1)
+                    frame_max=np.max(frame_float, axis=(1,2))[:, np.newaxis, np.newaxis]
+                    frame_255=(((frame_float-frame_min)/(frame_max-frame_min))*255).astype(np.uint8) # do per channel normalization to [0,1], then scale to [0,255]
+                    
                     for bin in range(NUM_BINS): # send bin by bin (really frame by frame) to consumer, each one is 224x224 bytes which is about 50kB, OK for UDP
-                        frame_float=voxel[bin, :, :].numpy()
-                        frame_min=np.min(frame_float)
-                        frame_max=np.max(frame_float)
-                        frame_255=(((frame_float-frame_min)/(frame_max-frame_min))*255).astype(np.uint8)
-                        data = pickle.dumps((frame_number, time_last_frame_sent, bin, frame_255,frame_min,frame_max))
+                        data = pickle.dumps((frame_number, time_last_frame_sent, bin, frame_255[bin],frame_min[bin],frame_max[bin]))
                         if not printed_udp_size:
                             if len(data)>64000:
                                 raise ValueError(f'UDP packet with length {len(data)} is too large')
