@@ -55,11 +55,11 @@ Unzip E2PD.zip to ./data/ folder
 - extract PDAVIS frames with [my_extract_events.py](my_extract_events.py)
   - `python my_extract_aps.py`
 - manually extract PDAVIS events from jaer using EventFilter DavisTextOutputWriter; see https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/#bookmark=id.9xld1vw3ttt0
-  -  Set the options "useSignedPolarity", "rewindBeforeRecording", "dvsEvents", and "closeOnRewind"
+  -  Set the options "rewindBeforeRecording", "dvsEvents", and "closeOnRewind". Leave "useSignedPolarity" unselected.
   - Click the "StartRecordingAndSaveAs" button and choose output file with _-events.txt_ extension; you can select the ./data/new/real/...timecode.txt file and delete the timecode part.
     - (** Because of bug in DavisTextOutputWriter, it is essential to open the output _xxx-events.txt_ and delete the first _n_ rows as they are duplicated. __n__ will be large number of perhaps 10k lines! **. If you don't do this you will get bogus timestamps that mess up the synchronization between events and frames and the training will have meaningless GT target.)
     - (** To find how many rows are duplicated, we can check the timestamp of the first frame in xxx-timecode.txt and then use this timestamp to find where the timestamp discontinuity appears in xxx-events.txt **)
-    - ![DavisTextOutputWriterSettings.png](media%2FDavisTextOutputWriterSettings.png)
+    - ![write-events-txt-file.png](media%2Fwrite-events-txt-file.png)
 - convert avi to frames with [my_video2frame.py](my_video2frame.py)
   - `python my_video2frame.py`
 - merge events, frame, frame_idx, frame_ts, intensity, aolp, dolp into one hdf5 file for the use of DNN using [my_merge_h5.py](my_merge_h5.py)
