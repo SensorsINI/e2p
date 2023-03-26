@@ -40,7 +40,7 @@ from train.events_contrast_maximization.utils.event_utils import events_to_voxel
 
 def producer(args):
     """ produce frames for consumer
-    :param record: record frames to a folder name record
+    :param args: argparser
     """
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_address = ('', PORT)
@@ -237,7 +237,7 @@ def producer(args):
                         client_socket.sendto(data, udp_address)
 
                 if recording_folder is not None and (save_next_frame or recording_activated):
-                    recording_frame_number=write_next_image(recording_folder, recording_frame_number, voxel_224)
+                    recording_frame_number=write_next_image(recording_folder, recording_frame_number, frame_255[-1])
                     print('.', end='')
                     if recording_frame_number%80==0:
                         print('')
@@ -250,8 +250,7 @@ def producer(args):
                             # min = np.min(frame)
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
-                            cv2.imshow('DVS', frame_255) # just show last frame
-                            mycv2_put_text('DVS','last voxel')
+                            cv2.imshow('DVS', frame_255[-1]) # just show last frame
                             if not cv2_resized:
                                 cv2.resizeWindow('DVS', IMSIZE*2, IMSIZE*2)
                                 cv2_resized = True

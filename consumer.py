@@ -203,6 +203,9 @@ def load_selected_model(args):
     # initial network model
     if not args.use_firenet:
         path = E2P_MODEL if args.checkpoint_path is None else args.checkpoint_path
+        p = Path(path)
+        if not p.is_file():
+            raise FileNotFoundError(f'model --checkpoint_path={args.checkpoint_path} does not exist. Maybe you used single quote in args? Use double quote.')
         log.info(f'loading checkpoint model path from {path} with torch.load()')
         checkpoint = torch.load(path)
         args, checkpoint = legacy_compatibility(args, checkpoint)
@@ -222,6 +225,15 @@ def load_selected_model(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='consumer: Consumes DVS frames to process', allow_abbrev=True,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "--record", type=str, default=None,
+        help=f"record E2P output frames into folder {os.path.join(DATA_FOLDER, 'recordings','<name>')}")
+    parser.add_argument(
+        "--space_toggles_recording", action='store_true', default=True,
+        help="space toggles recording on/off")
+    parser.add_argument(
+        "--spacebar_records", action='store_true',
+        help="only record when spacebar pressed down")
     parser.add_argument('--use_firenet', action='store_true', default=USE_FIRENET,
                         help='use (legacy) firenet instead of e2p')
     parser.add_argument('--checkpoint_path', type=str, default=None,
@@ -277,6 +289,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    recording_folder = None
+    recording_frame_number = 0
+    record = args.record
+    spacebar_records = args.spacebar_records
+    space_toggles_recording = args.space_toggles_recording
+
     if args.device is not None:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.device
     log.info('Loading checkpoint: {} ...'.format(args.checkpoint_path))
@@ -311,6 +329,14 @@ if __name__ == '__main__':
             # wait minimally since interp takes time anyhow
             cv2.waitKey(1)
 
+    if record is not None and space_toggles_recording and spacebar_records:
+        log.error('set either --spacebar_records or --space_toggles_recording')
+        quit(1)
+    if record is not None:
+        log.info(f'recording to {record} with spacebar_records={spacebar_records} space_toggles_recording={space_toggles_recording} and args {str(args)}')
+        recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
+        log.info(f'recording frames to {recording_folder}')
+        Path(recording_folder).mkdir(parents=True, exist_ok=True)
 
     last_frame_number = 0
     voxel_five_float32 = np.zeros((NUM_BINS, IMSIZE, IMSIZE))
@@ -362,6 +388,11 @@ if __name__ == '__main__':
 
                     image = cv2.hconcat([intensity, aolp, dolp])
                     show_frame(image, 'polarization', cv2_resized)
+                    if recording_folder is not None and (save_next_frame or recording_activated):
+                        recording_frame_number = write_next_image(recording_folder, recording_frame_number, frame_255)
+                        print('.', end='')
+                        if recording_frame_number % 80 == 0:
+                            print('')
 
             # save time since frame sent from producer
             dt = time.time() - timestamp
