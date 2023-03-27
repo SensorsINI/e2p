@@ -111,7 +111,7 @@ SRC_DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'source_data') #'/home/tobi/Down
 TRAIN_DATA_FOLDER=os.path.join(ROOT_DATA_FOLDER,'training_dataset') #'/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
 
 USE_FIRENET=False # True to use firenet DNN from Cedric, False to use e2p DNN
-E2P_MODEL= 'models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth' # 'models/e2ptobi-data.pth' #'./e2p.pth'
+E2P_MODEL= 'models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth' # 'models/e2ptobi-data.pth' #'./e2p-cvpr2023.pth'
 FIRENET_MODEL='./firenet/ckpt/firenet_1000.pth.tar'
 
 import signal

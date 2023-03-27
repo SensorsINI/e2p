@@ -14,7 +14,7 @@ pdavis='/home/tobi/pdavis_demo'
 # # fine tune published model with new data; see README.md to add new data
 # config="e2p.json"
 # echo "training with config $config"
-# python train.py -c $config --limited_memory --resume $pdavis/e2p.pth
+# python train.py -c $config --limited_memory --resume $pdavis/e2p-cvpr2023.pth
 
 
 # fine tune published model with new data; see README.md to add new data
