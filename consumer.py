@@ -62,7 +62,8 @@ def consumer(pipe:Pipe):
 
         address = ("", PORT)
         server_socket.bind(address)
-        log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to receive the {IMSIZE}x{IMSIZE} images')
+        args.sensor_resolution=(IMSIZE,IMSIZE) #using UDP, so need to limit UDP packet size
+        log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to receive the {args.sensor_resolution} images')
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     if device == 'cpu':
@@ -147,7 +148,7 @@ def consumer(pipe:Pipe):
                     if pipe.poll(timeout=1):
                         voxel_five_float32 = pipe.recv()
                     else:
-                        image=np.zeros((IMSIZE,IMSIZE),dtype=np.uint8)
+                        image=np.zeros(args.sensor_resolution,dtype=np.uint8)
                         show_frame(image, 'polarization', cv2_resized)
                         continue
                     # log.debug(f'received entire voxel volume on pipe with shape={voxel_five_float32.shape}')
@@ -158,7 +159,7 @@ def consumer(pipe:Pipe):
 
                     (frame_number, timestamp, bin, frame_255, frame_min, frame_max) = pickle.loads(receive_data)
                     if bin == 0:
-                        voxel_five_float32 = np.zeros((1, NUM_BINS, IMSIZE, IMSIZE))
+                        voxel_five_float32 = np.zeros((1, NUM_BINS, args.sensor_resolution[0], args.sensor_resolution[1]))
                         c = 0
                     dropped_frames = frame_number - last_frame_number - 1
                     if dropped_frames > 0:
@@ -375,6 +376,7 @@ def load_selected_model(args, device):
 def get_args():
     parser = argparse.ArgumentParser(description='consumer: Consumes DVS frames to process', allow_abbrev=True,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--sensor_resolution", type=tuple, default=SENSOR_RESOLUTION, help="sensor resolution as tuple (height, width)")
     parser.add_argument("--record", type=str, default=None, help=f"record E2P output frames into folder {os.path.join(DATA_FOLDER, 'recordings', '<name>')}")
     parser.add_argument("--space_toggles_recording", action='store_true', default=True, help="space toggles recording on/off")
     parser.add_argument("--spacebar_records", action='store_true', help="only record when spacebar pressed down")

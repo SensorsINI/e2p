@@ -23,24 +23,23 @@ import numpy as np
 # from tqdm import tqdm
 import select
 import multiprocessing.connection as mpc
+from multiprocessing import  Pipe
 
 from globals_and_utils import *
 from engineering_notation import EngNumber as eng # only from pip
 import argparse
-import psutil
+# import psutil
+import torch
 
 from pyaer.davis import DAVIS
 from pyaer import libcaer
-from multiprocessing.managers import SharedMemoryManager
 
 from utils.get_logger import get_logger
 log=get_logger(__name__)
 
-import torch
 # from events_contrast_maximization.utils.event_utils import events_to_voxel_torch  # WARNING: this function is not the same one used for e2p training
 from train.events_contrast_maximization.utils.event_utils import events_to_voxel_torch  # This one is the same as used for e2p training
 
-from multiprocessing import  Pipe
 
 def producer(pipe:Pipe):
     """ produce frames for consumer
@@ -48,9 +47,13 @@ def producer(pipe:Pipe):
     """
     args=get_args()
 
+
     if pipe is None:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_address = ('', PORT)
+        args.sensor_resolution=(IMSIZE,IMSIZE) # if we use UDP, we need to limit UDP packet size
+    else:
+        args.sensor_resolution=SENSOR_RESOLUTION # we can send the whole voxel volume over Pipe
     recording_folder = None
     recording_frame_number = 0
 
@@ -203,11 +206,9 @@ def producer(pipe:Pipe):
                     ys = torch.from_numpy(events[:, 2].astype(np.float32)) # event y addresses
                     ts = torch.from_numpy((events[:, 0] - events[0, 0]).astype(np.float32)) # event relative timesamps in us
                     ps = torch.from_numpy((events[:, 3] * 2 - 1).astype(np.float32)) # change polarity from 0,1 to -1,+1 so that polarities are signed
-                    # ps = torch.from_numpy((events[:, 3]).astype(np.float32)) # leave polarities as (0,1) (OFF,ON) values
                     voxel = events_to_voxel_torch(xs, ys, ts, ps, num_bins, sensor_size=sensor_resolution, temporal_bilinear=True) # TODO temporal_bilinear=False broken
-                    # voxel = (((voxel + 1) / 2) * 255) # map (-1,+1) range to (0,1) range and then to (0,255) range for uint8 xfer to consumer
                     # The DNN is trained with 112x112 but can test on 346x260. We crop it to 224x224 to enable UDP transfer otherwise it will be too large.
-                    voxel = voxel[:, 0:IMSIZE, 0:IMSIZE] # crop out UL corner from entire voxel frame to limit to max possible UDP packet size
+                    voxel = voxel[:, 0:args.sensor_resolution[0], 0:args.sensor_resolution[1]] # crop out UL corner from entire voxel frame to limit to max possible UDP packet size
                     pass
 
                 with Timer('sending voxels to consumer'):
@@ -263,7 +264,7 @@ def producer(pipe:Pipe):
                             else:
                                 cv2.imshow('DVS', frame_255[-1]) # just show last frame
                             if not cv2_resized:
-                                cv2.resizeWindow('DVS', IMSIZE*2, IMSIZE*2)
+                                cv2.resizeWindow('DVS', args.sensor_resolution[1]*2, args.sensor_resolution[0]*2)
                                 cv2_resized = True
                             k = cv2.waitKey(1) & 0xFF
                             if k == ord('q') or k == ord('x'):
@@ -351,42 +352,19 @@ def print_key_help():
           'q or x or ESC: exit')
 
 def get_args():
-    parser = argparse.ArgumentParser(
-        description='producer: Generates DVS frames for pdavis_demo to process in consumer', allow_abbrev=True,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument(
-        "--record", type=str, default=None,
-        help=f"record DVS frames into folder {os.path.join(DATA_FOLDER, 'recordings','<name>')}")
-    parser.add_argument(
-        "--flex_time_mode", type=bool, default=FLEX_TIME_MODE,
-        help="True to use frame_count_k_events input, False to use frame_duration_ms")
-    parser.add_argument(
-        "--frame_duration_ms", type=int, default=FRAME_DURATION_US/1000,
-        help="duration of frame exposure per total voxel volume")
-    parser.add_argument(
-        "--frame_count_k_events", type=int, default=FRAME_COUNT_EVENTS/1000,
-        help="duration of frame exposure per total voxel volume")
-    parser.add_argument(
-        "--num_bins", type=int, default=NUM_BINS,
-        help="number of bins for event voxel")
-    parser.add_argument(
-        "--sensor_resolution", type=tuple, default=SENSOR_RESOLUTION,
-        help="sensor resolution")
-    parser.add_argument(
-        "--spacebar_records", action='store_true',
-        help="only record when spacebar pressed down")
-    parser.add_argument(
-        "--space_toggles_recording", action='store_true', default=True,
-        help="space toggles recording on/off")
-    parser.add_argument(
-        "--numpy", action='store_true', default=True,
-        help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")
-    parser.add_argument('--e2p', action='store_true', default=True,
-                        help='set required parameters to run events to polarity e2p DNN')
-    parser.add_argument('--e2vid', action='store_true', default=False,
-                        help='set required parameters to run original e2vid as described in Rebecq20PAMI for polariziation reconstruction')
-    parser.add_argument('--firenet_legacy', action='store_true', default=False,
-                        help='set required parameters to run legacy firenet as described in Scheerlinck20WACV (not for retrained models using updated code)')
+    parser = argparse.ArgumentParser(description='producer: Generates DVS frames for pdavis_demo to process in consumer', allow_abbrev=True, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--record", type=str, default=None, help=f"record DVS frames into folder {os.path.join(DATA_FOLDER, 'recordings','<name>')}")
+    parser.add_argument("--flex_time_mode", type=bool, default=FLEX_TIME_MODE, help="True to use frame_count_k_events input, False to use frame_duration_ms")
+    parser.add_argument("--frame_duration_ms", type=int, default=FRAME_DURATION_US/1000, help="duration of frame exposure per total voxel volume")
+    parser.add_argument("--frame_count_k_events", type=int, default=FRAME_COUNT_EVENTS/1000, help="duration of frame exposure per total voxel volume")
+    parser.add_argument("--num_bins", type=int, default=NUM_BINS, help="number of bins for event voxel")
+    parser.add_argument("--sensor_resolution", type=tuple, default=SENSOR_RESOLUTION, help="sensor resolution as tuple (height, width)")
+    parser.add_argument("--spacebar_records", action='store_true', help="only record when spacebar pressed down")
+    parser.add_argument("--space_toggles_recording", action='store_true', default=True, help="space toggles recording on/off")
+    parser.add_argument("--numpy", action='store_true', default=True, help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")
+    parser.add_argument('--e2p', action='store_true', default=True, help='set required parameters to run events to polarity e2p DNN')
+    parser.add_argument('--e2vid', action='store_true', default=False, help='set required parameters to run original e2vid as described in Rebecq20PAMI for polariziation reconstruction')
+    parser.add_argument('--firenet_legacy', action='store_true', default=False, help='set required parameters to run legacy firenet as described in Scheerlinck20WACV (not for retrained models using updated code)')
     args = parser.parse_args()
     return args
 
