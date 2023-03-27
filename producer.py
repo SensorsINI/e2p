@@ -20,7 +20,9 @@ import time
 import numpy.ma as ma
 import socket
 import numpy as np
-from tqdm import tqdm
+# from tqdm import tqdm
+import select
+import multiprocessing.connection as mpc
 
 from globals_and_utils import *
 from engineering_notation import EngNumber as eng # only from pip
@@ -29,6 +31,7 @@ import psutil
 
 from pyaer.davis import DAVIS
 from pyaer import libcaer
+from multiprocessing.managers import SharedMemoryManager
 
 from utils.get_logger import get_logger
 log=get_logger(__name__)
@@ -37,13 +40,17 @@ import torch
 # from events_contrast_maximization.utils.event_utils import events_to_voxel_torch  # WARNING: this function is not the same one used for e2p training
 from train.events_contrast_maximization.utils.event_utils import events_to_voxel_torch  # This one is the same as used for e2p training
 
+from multiprocessing import  Pipe
 
-def producer(args):
+def producer(pipe:Pipe):
     """ produce frames for consumer
-    :param args: argparser
+    :param pipe: if started with a pipe, uses that for sending voxel volume
     """
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_address = ('', PORT)
+    args=get_args()
+
+    if pipe is None:
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_address = ('', PORT)
     recording_folder = None
     recording_frame_number = 0
 
@@ -88,6 +95,7 @@ def producer(args):
     print(device.aps_color_filter == 1)
     # device.start_data_stream()
     assert (device.send_default_config())
+    # following buffer size/number commands fail on WSL2, nothing comes from DAVIS
     # attempt to set up USB host buffers for acquisition thread to minimize latency
     # assert (device.set_config(
     #     libcaer.CAER_HOST_CONFIG_USB,
@@ -97,11 +105,11 @@ def producer(args):
     #     libcaer.CAER_HOST_CONFIG_USB,
     #     libcaer.CAER_HOST_CONFIG_USB_BUFFER_SIZE,
     #     64000))
-    assert (device.data_start())
     # assert (device.set_config(
     #     libcaer.CAER_HOST_CONFIG_PACKETS,
     #     libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
     #     10000)) # set max interval to this value in us. Set to not produce too many packets/sec here, not sure about reasoning
+    assert (device.data_start())
     assert (device.set_data_exchange_blocking())
 
     # setting bias after data stream started
@@ -121,11 +129,6 @@ def producer(args):
         log.info(f'recording frames to {recording_folder}')
         Path(recording_folder).mkdir(parents=True, exist_ok=True)
 
-
-    xfac = float(IMSIZE) / device.dvs_size_X
-    yfac = float(IMSIZE) / device.dvs_size_Y
-    histrange = [(0, v) for v in (IMSIZE, IMSIZE)]  # allocate DVS frame histogram to desired output size
-    npix = IMSIZE * IMSIZE
     cv2_resized = False
     last_cv2_frame_time = time.time()
     # frame=None
@@ -135,6 +138,12 @@ def producer(args):
     recording_activated=False
     save_next_frame=(not space_toggles_recording and not spacebar_records) # if we don't supply the option, it will be False and we want to then save all frames
     saved_events=[]
+
+    #https://stackoverflow.com/questions/45318798/how-to-detect-multiprocessing-pipe-is-full
+    def pipe_full(conn):
+        r, w, x = select.select([], [conn], [], 0.0)
+        return 0 == len(w)
+
 
     print_key_help()
     try:
@@ -187,21 +196,6 @@ def producer(args):
 
                 frames_dropped_counter=0
 
-                # naive integration
-                # with Timer('accum/norm frame from events'):
-                #     # if frame is None: # debug timing
-                #         # take DVS coordinates and scale x and y to output frame dimensions using flooring math
-                #         # xs=np.floor(events[:,1]*xfac)
-                #         # ys=np.floor(events[:,2]*yfac)
-                #         xs=events[:,1]
-                #         ys=events[:,2]
-                #         ts=events[:,0]
-                #         frame, _, _ = np.histogram2d(ys, xs, bins=(IMSIZE, IMSIZE), range=histrange)
-                #         # frame, _, _ = np.histogram2d(ys, xs, bins=(257, 255), range=histrange)
-                #         # fmax_count=np.max(frame) # todo check if fmax is frequenty exceeded, increase contrast
-                #         frame[frame > args.clip_count]=args.clip_count
-                #         frame= ((255. / args.clip_count) * frame).astype('uint8') # max pixel will have value 255
-
                 # voxelization for network inference
                 with Timer('computing voxels from events'):
                     # events[:,x] where for x, 0 is time, 1 and 2 are x and y, 3rd is polarity ON/OFF
@@ -217,24 +211,33 @@ def producer(args):
                     pass
 
                 with Timer('sending voxels to consumer'):
-                    time_last_frame_sent=time.time()
-                    # data = pickle.dumps((frame_number, time_last_frame_sent, voxel[0, :, :])) # send frame_number to allow determining dropped frames in consumer
-                    # data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
-                    frame_float=voxel.numpy()
-                    frame_min=np.min(frame_float, axis=(1,2))[:, np.newaxis, np.newaxis] # get the min value per channel/bin, shape should be (bin,1,1)
-                    frame_max=np.max(frame_float, axis=(1,2))[:, np.newaxis, np.newaxis]
-                    frame_255=(((frame_float-frame_min)/(frame_max-frame_min))*255).astype(np.uint8) # do per channel normalization to [0,1], then scale to [0,255]
-                    
-                    for bin in range(NUM_BINS): # send bin by bin (really frame by frame) to consumer, each one is 224x224 bytes which is about 50kB, OK for UDP
-                        data = pickle.dumps((frame_number, time_last_frame_sent, bin, frame_255[bin],frame_min[bin],frame_max[bin]))
-                        if not printed_udp_size:
-                            if len(data)>64000:
-                                raise ValueError(f'UDP packet with length {len(data)} is too large')
-                            else:
-                                printed_udp_size=True
-                                log.info(f'UDP packet size for first frame is {len(data)} bytes')
-                        frame_number+=1
-                        client_socket.sendto(data, udp_address)
+                    if pipe:
+                        voxel_4d=np.expand_dims(voxel.numpy(),0) # need to expand to 4d for input to DNN
+                        # log.debug(f'sending entire voxel volume on pipe with shape={voxel_4d.shape}')
+                        if pipe_full(pipe):
+                            log.warning('pipe is full, cannot send voxel volume')
+                        else:
+                            pipe.send(voxel_4d)
+                        # log.debug('sent entire voxel volume on pipe')
+                    else:
+                        time_last_frame_sent=time.time()
+                        # data = pickle.dumps((frame_number, time_last_frame_sent, voxel[0, :, :])) # send frame_number to allow determining dropped frames in consumer
+                        # data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
+                        frame_float=voxel.numpy()
+                        frame_min=np.min(frame_float, axis=(1,2))[:, np.newaxis, np.newaxis] # get the min value per channel/bin, shape should be (bin,1,1)
+                        frame_max=np.max(frame_float, axis=(1,2))[:, np.newaxis, np.newaxis]
+                        frame_255=(((frame_float-frame_min)/(frame_max-frame_min))*255).astype(np.uint8) # do per channel normalization to [0,1], then scale to [0,255]
+
+                        for bin in range(NUM_BINS): # send bin by bin (really frame by frame) to consumer, each one is 224x224 bytes which is about 50kB, OK for UDP
+                            data = pickle.dumps((frame_number, time_last_frame_sent, bin, frame_255[bin],frame_min[bin],frame_max[bin]))
+                            if not printed_udp_size:
+                                if len(data)>64000:
+                                    raise ValueError(f'UDP packet with length {len(data)} is too large')
+                                else:
+                                    printed_udp_size=True
+                                    log.info(f'UDP packet size for first frame is {len(data)} bytes')
+                            frame_number+=1
+                            client_socket.sendto(data, udp_address)
 
                 if recording_folder is not None and (save_next_frame or recording_activated):
                     recording_frame_number=write_next_image(recording_folder, recording_frame_number, frame_255[-1])
@@ -250,7 +253,15 @@ def producer(args):
                             # min = np.min(frame)
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
-                            cv2.imshow('DVS', frame_255[-1]) # just show last frame
+                            if pipe: # we need to render from last frame of voxel volume here since we just sent the whole thing over pipe as float
+                                frame_float = voxel.numpy()[-1]
+                                frame_min = np.min(frame_float)
+                                frame_max = np.max(frame_float)
+                                frame_255 = (((frame_float - frame_min) / (frame_max - frame_min)) * 255).astype(
+                                    np.uint8)
+                                cv2.imshow('DVS', frame_255)
+                            else:
+                                cv2.imshow('DVS', frame_255[-1]) # just show last frame
                             if not cv2_resized:
                                 cv2.resizeWindow('DVS', IMSIZE*2, IMSIZE*2)
                                 cv2_resized = True
@@ -380,5 +391,4 @@ def get_args():
     return args
 
 if __name__ == '__main__':
-    args=get_args()
-    producer(args)
+    producer(None)

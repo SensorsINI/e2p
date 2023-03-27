@@ -10,30 +10,23 @@
 """
 
 import argparse
-import glob
 import pickle
 import cv2
-import sys
-import serial
 import socket
-from select import select
 
 from thop import profile, clever_format
 
 from globals_and_utils import *
-from engineering_notation import EngNumber as eng  # only from pip
-import collections
+# from engineering_notation import EngNumber as eng  # only from pip
 from pathlib import Path
-import random
 
-# for network inference
 import torch
 from utils.util import torch2cv2, torch2numpy, numpy2cv2
 from easygui import fileopenbox
 from utils.prefs import MyPreferences
 prefs=MyPreferences()
 
-log = get_logger()
+log = get_logger(__name__)
 
 # Only used in mac osx
 try:
@@ -45,14 +38,173 @@ except Exception as e:
 import e2p as model_arch
 from utils.henri_compatible import make_henri_compatible
 from parse_config import ConfigParser
+from multiprocessing import  Pipe
 
-model_info = {}
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-if device == 'cpu':
-    log.warning(f'CUDA GPU is not available, running on CPU which will be very slow')
-    time.sleep(1)
-states = None  # firenet states, to feed back into firenet
-model = None
+def consumer(pipe:Pipe):
+    """
+    consume frames to predict polarization
+    :param pipe: if started with a pipe, uses that for input of voxel volume
+    """
+    args=get_args()
+
+    states = None  # firenet states, to feed back into firenet
+    model = None
+
+    recording_folder = None
+    recording_frame_number = 0
+    record = args.record
+    spacebar_records = args.spacebar_records
+    space_toggles_recording = args.space_toggles_recording
+
+    if pipe is None:
+        log.info('opening UDP port {} to receive frames from producer'.format(PORT))
+        server_socket: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        address = ("", PORT)
+        server_socket.bind(address)
+        log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to receive the {IMSIZE}x{IMSIZE} images')
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if device == 'cpu':
+        log.warning(f'CUDA GPU is not available, running on CPU which will be very slow')
+        time.sleep(1)
+    if args.device is not None:
+        os.environ['CUDA_VISIBLE_DEVICES'] = args.device
+    log.info('Loading checkpoint: {} ...'.format(args.checkpoint_path))
+    model = load_selected_model(args, device)
+    log.info('GPU is {}'.format('available' if args.device is not None else 'not available (check cuda setup)'))
+
+
+    cv2_resized = dict()
+
+
+    def show_frame(frame, name, resized_dict):
+        """ Show the frame in named cv2 window and handle resizing
+        :param frame: 2D array of RGB values uint8 [y,x,RGB]
+        :param name: string name for window
+        :param resized_dict: dict to hold this frame for resizing operations
+        :param text: text to add at LL corner
+        """
+        cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+        cv2.imshow(name, frame)
+        if not (name in resized_dict):
+            cv2.resizeWindow(name, 1800, 600)
+            resized_dict[name] = True
+            # wait minimally since interp takes time anyhow
+            cv2.waitKey(1)
+
+    if record is not None and space_toggles_recording and spacebar_records:
+        log.error('set either --spacebar_records or --space_toggles_recording')
+        quit(1)
+    if record is not None:
+        log.info(
+            f'recording to {record} with spacebar_records={spacebar_records} space_toggles_recording={space_toggles_recording} and args {str(args)}')
+        recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
+        log.info(f'recording frames to {recording_folder}')
+        Path(recording_folder).mkdir(parents=True, exist_ok=True)
+
+    recording_activated=False
+    save_next_frame=(not space_toggles_recording and not spacebar_records) # if we don't supply the option, it will be False and we want to then save all frames
+    last_frame_number = 0
+    voxel_five_float32 = None
+    c = 0
+    print_key_help()
+    frames_without_drop = 0
+    while True:
+        # todo: reset state after a long period
+        if not args.use_firenet:
+            model.reset_states_i()
+            model.reset_states_a()
+            model.reset_states_d()
+        # timestr = time.strftime("%Y%m%d-%H%M") # numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy'
+        with Timer('overall consumer loop', show_hist=True, savefig=True):
+            k = cv2.waitKey(1) & 0xFF
+            if k == ord('q') or k == ord('x'):
+                print('quitting....')
+                break
+            elif k == ord('h') or k == ord('?'):
+                print_key_help()
+            elif k == ord('p'):
+                print_timing_info()
+            elif k == ord('-'):
+                args.dolp_aolp_mask_level*= .9
+                print(f'decrased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
+            elif k == ord('='):
+                args.dolp_aolp_mask_level/= .9
+                print(f'increased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
+                print(f'increased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
+            elif k == ord('m'):
+                args.use_firenet = not args.use_firenet
+                model = load_selected_model(args, device)
+                print(f' changed mode to args.use_firenet={args.use_firenet}')
+            elif k != 255:
+                print_key_help()
+                print(f'unknown key {k}')
+
+            with Timer('receive voxels'):
+                if pipe:
+                    # log.debug('receiving entire voxel volume on pipe')
+                    if pipe.poll(timeout=1):
+                        voxel_five_float32 = pipe.recv()
+                    else:
+                        image=np.zeros((IMSIZE,IMSIZE),dtype=np.uint8)
+                        show_frame(image, 'polarization', cv2_resized)
+                        continue
+                    # log.debug(f'received entire voxel volume on pipe with shape={voxel_five_float32.shape}')
+                    c=NUM_BINS
+                else:
+                    receive_data = server_socket.recv(UDP_BUFFER_SIZE)
+
+
+                    (frame_number, timestamp, bin, frame_255, frame_min, frame_max) = pickle.loads(receive_data)
+                    if bin == 0:
+                        voxel_five_float32 = np.zeros((1, NUM_BINS, IMSIZE, IMSIZE))
+                        c = 0
+                    dropped_frames = frame_number - last_frame_number - 1
+                    if dropped_frames > 0:
+                        log.warning(f'Dropped {dropped_frames} producer frames after {frames_without_drop} good frames')
+                        frames_without_drop = 0
+                    else:
+                        frames_without_drop += 1
+                    last_frame_number = frame_number
+                    # voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1 # map 0-255 range to -1,+1 range
+                    # voxel_five_float32[:, bin, :, :] = voxel.astype(np.float32)
+                    voxel_five_float32[:, bin, :, :] = ((frame_255.astype(np.float32)) / 255) * (
+                                frame_max - frame_min) + frame_min
+                    c += 1
+            if c == NUM_BINS:
+                with Timer('run CNN', show_hist=True, savefig=True):
+                    input = torch.from_numpy(voxel_five_float32).to(device)
+                    if not args.use_firenet:  # e2p, just use voxel grid from producer
+                        output = model(input)
+                        intensity, aolp, dolp = compute_e2p_output(model, output, args) # output are RGB images with gray, HSV, and HOT coding
+                    else:  # firenet, we need to extract the 4 angle channels and run firenet on each one
+
+                        intensity, aolp, dolp, aolp_mask = compute_firenet_output(model,input, states)
+
+                with Timer('show output frame'):
+                    mycv2_put_text(intensity, 'intensity')
+                    mycv2_put_text(aolp, 'AoLP')
+                    mycv2_put_text(dolp, 'DoLP')
+
+                    image = cv2.hconcat([intensity, aolp, dolp])
+                    show_frame(image, 'polarization', cv2_resized)
+                    if recording_folder is not None and (save_next_frame or recording_activated):
+                        recording_frame_number = write_next_image(recording_folder, recording_frame_number, frame_255)
+                        print('.', end='')
+                        if recording_frame_number % 80 == 0:
+                            print('')
+
+
+    # calculate the computational efficiency
+    if args.calculate_model_flops_size:
+        flops, params = profile(model, inputs=(input,))
+        flops, params = clever_format([flops, params], "%.3f")
+        print(model)
+        print('[Statistics Information]\nFLOPs: {}\nParams: {}'.format(flops, params))
+
+    print_timing_info()
+    print(f'****** done running model {args.checkpoint_path}')
 
 
 def print_key_help():
@@ -83,10 +235,11 @@ def legacy_compatibility(args, checkpoint):
     return args, checkpoint
 
 
-def load_e2p_model(checkpoint):
+def load_e2p_model(checkpoint, device):
     config = checkpoint['config']
     log.info(f'configuration is {config["arch"]}')
     state_dict = checkpoint['state_dict']
+    model_info = {}
 
     try:
         model_info['num_bins'] = config['arch']['args']['unet_kwargs']['num_bins']
@@ -106,15 +259,13 @@ def load_e2p_model(checkpoint):
 
     model = model.to(device)
     model.eval()
-    # if args.color:
-    #     model = ColorNet(model)
     for param in model.parameters():
         param.requires_grad = False
 
     return model
 
 
-def compute_firenet_output(input):
+def compute_firenet_output(model,input,states):
     output, states = model(input,
                            states)  # TODO not correct, should build voxel grid for each polarization channel and run on each independently
 
@@ -155,7 +306,7 @@ def norm_max_min(v):
     return v
 
 
-def compute_e2p_output(output):
+def compute_e2p_output(model, output, args):
     """ Computes intensity, aolp, dolp outputs from  E2P output
     :param output: DNN output
     :returns: intensity, aolp, dolp
@@ -164,7 +315,7 @@ def compute_e2p_output(output):
     intensity = torch2cv2(output['i'])
     aolp = torch2cv2(output['a']) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
     dolp = torch2cv2(output['d'])
-    aolp_mask=np.where(dolp<DOLP_AOLP_MASK_LEVEL*255)
+    aolp_mask=np.where(dolp<args.dolp_aolp_mask_level*255)
 
     # find the DoLP values that are less than mask value and use them to mask out the AoLP values so they show up as black
 
@@ -188,7 +339,7 @@ def compute_e2p_output(output):
     return intensity, aolp, dolp
 
 
-def load_selected_model(args):
+def load_selected_model(args, device):
     if args.browse_checkpoint:
         lastmodel=prefs.get('last_model_selected','models/*.pth')
         f = fileopenbox(msg='select model checkpoint', title='Model checkpoint', default=lastmodel,
@@ -208,8 +359,8 @@ def load_selected_model(args):
             raise FileNotFoundError(f'model --checkpoint_path={args.checkpoint_path} does not exist. Maybe you used single quote in args? Use double quote.')
         log.info(f'loading checkpoint model path from {path} with torch.load()')
         checkpoint = torch.load(path)
-        args, checkpoint = legacy_compatibility(args, checkpoint)
-        model = load_e2p_model(checkpoint)
+        # args, checkpoint = legacy_compatibility(args, checkpoint)
+        model = load_e2p_model(checkpoint,device)
     else:  # load firenet
         from rpg_e2vid.utils.loading_utils import load_model as load_firenet_model
         path = FIRENET_MODEL if args.checkpoint_path is None else args.checkpoint_path
@@ -221,211 +372,27 @@ def load_selected_model(args):
 
     return model
 
-
-if __name__ == '__main__':
+def get_args():
     parser = argparse.ArgumentParser(description='consumer: Consumes DVS frames to process', allow_abbrev=True,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument(
-        "--record", type=str, default=None,
-        help=f"record E2P output frames into folder {os.path.join(DATA_FOLDER, 'recordings','<name>')}")
-    parser.add_argument(
-        "--space_toggles_recording", action='store_true', default=True,
-        help="space toggles recording on/off")
-    parser.add_argument(
-        "--spacebar_records", action='store_true',
-        help="only record when spacebar pressed down")
-    parser.add_argument('--use_firenet', action='store_true', default=USE_FIRENET,
-                        help='use (legacy) firenet instead of e2p')
-    parser.add_argument('--checkpoint_path', type=str, default=None,
-                        help='path to latest checkpoint, if not specified, uses E2P_MODEL global')
-    parser.add_argument('--browse_checkpoint', action='store_true', default=False,
-                        help='open file dialog to select model checkpoint')
-    parser.add_argument('--output_folder', default="/tmp/output", type=str,
-                        help='where to save outputs to')
-    parser.add_argument('--height', type=int, default=260,
-                        help='sensor resolution: height')
-    parser.add_argument('--width', type=int, default=346,
-                        help='sensor resolution: width')
-    parser.add_argument('--device', default='0', type=str,
-                        help='indices of GPUs to enable')
-    parser.add_argument('--is_flow', action='store_true',
-                        help='If true, save output to flow npy file')
-    parser.add_argument('--update', action='store_true',
-                        help='Set this if using updated models')
-    parser.add_argument('--color', action='store_true', default=False,
-                        help='Perform color reconstruction')
-    parser.add_argument('--voxel_method', default='between_frames', type=str,
-                        help='which method should be used to form the voxels',
-                        choices=['between_frames', 'k_events', 't_seconds'])
-    parser.add_argument('--k', type=int,
-                        help='new voxels are formed every k events (required if voxel_method is k_events)')
-    parser.add_argument('--sliding_window_w', type=int,
-                        help='sliding_window size (required if voxel_method is k_events)')
-    parser.add_argument('--t', type=float,
-                        help='new voxels are formed every t seconds (required if voxel_method is t_seconds)')
-    parser.add_argument('--sliding_window_t', type=float,
-                        help='sliding_window size in seconds (required if voxel_method is t_seconds)')
-    parser.add_argument('--loader_type', default='H5', type=str,
-                        help='Which data format to load (HDF5 recommended)')
-    parser.add_argument('--filter_hot_events', action='store_true',
-                        help='If true, auto-detect and remove hot pixels')
-    parser.add_argument('--legacy_norm', action='store_true', default=False,
-                        help='Normalize nonzero entries in voxel to have mean=0, std=1 according to Rebecq20PAMI and Scheerlinck20WACV.'
-                             'If --e2vid or --firenet_legacy are set, --legacy_norm will be set to True (default False).')
-    parser.add_argument('--robust_norm', action='store_true', default=False,
-                        help='Normalize voxel')
-    parser.add_argument('--e2p', action='store_true', default=True,
-                        help='set required parameters to run events to polarity e2p DNN')
-    parser.add_argument('--e2vid', action='store_true', default=False,
-                        help='set required parameters to run original e2vid as described in Rebecq20PAMI for polariziation reconstruction')
-    parser.add_argument('--firenet_legacy', action='store_true', default=False,
-                        help='set required parameters to run legacy firenet as described in Scheerlinck20WACV (not for retrained models using updated code)')
-    parser.add_argument('--calculate_mode', action='store_true', default=False,
-                        help='Calculate the parameters and FLOPs.')
-    parser.add_argument('--real_data', action='store_true', default=False,
-                        help='currentl>y our own real data has no frame')
-    parser.add_argument('--direction', default=None, type=str,
-                        help='Specify which dataloader will be used for FireNet inference.')
+    parser.add_argument("--record", type=str, default=None, help=f"record E2P output frames into folder {os.path.join(DATA_FOLDER, 'recordings', '<name>')}")
+    parser.add_argument("--space_toggles_recording", action='store_true', default=True, help="space toggles recording on/off")
+    parser.add_argument("--spacebar_records", action='store_true', help="only record when spacebar pressed down")
+    parser.add_argument('--dolp_aolp_mask_level', type=float, default=DOLP_AOLP_MASK_LEVEL, help='level of DoLP below which to mask the AoLP value since it is likely not meaningful')
+    parser.add_argument('--use_firenet', action='store_true', default=USE_FIRENET, help='use (legacy) firenet instead of e2p')
+    parser.add_argument('--checkpoint_path', type=str, default=None, help='path to latest checkpoint, if not specified, uses E2P_MODEL global')
+    parser.add_argument('--browse_checkpoint', action='store_true', default=False, help='open file dialog to select model checkpoint')
+    parser.add_argument('--output_folder', default="/tmp/output", type=str, help='where to save outputs to')
+    parser.add_argument('--device', default='0', type=str, help='indices of GPUs to enable')
+    parser.add_argument('--filter_hot_events', action='store_true', help='If true, auto-detect and remove hot pixels')
+    parser.add_argument('--legacy_norm', action='store_true', default=False, help='Normalize nonzero entries in voxel to have mean=0, std=1 according to Rebecq20PAMI and Scheerlinck20WACV.If --e2vid or --firenet_legacy are set, --legacy_norm will be set to True (default False).')
+    parser.add_argument('--robust_norm', action='store_true', default=False, help='Normalize voxel')
+    parser.add_argument('--e2p', action='store_true', default=True, help='set required parameters to run events to polarity e2p DNN')
+    parser.add_argument('--calculate_model_flops_size', action='store_true', default=False, help='Calculate the model num parameters and FLOPs per frame.')
 
     args = parser.parse_args()
-
-    recording_folder = None
-    recording_frame_number = 0
-    record = args.record
-    spacebar_records = args.spacebar_records
-    space_toggles_recording = args.space_toggles_recording
-
-    if args.device is not None:
-        os.environ['CUDA_VISIBLE_DEVICES'] = args.device
-    log.info('Loading checkpoint: {} ...'.format(args.checkpoint_path))
-
-    log.info('opening UDP port {} to receive frames from producer'.format(PORT))
-    server_socket: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-    address = ("", PORT)
-    server_socket.bind(address)
-
-    model = load_selected_model(args)
-
-    log.info(f'Using UDP buffer size {UDP_BUFFER_SIZE} to receive the {IMSIZE}x{IMSIZE} images')
-
-    cv2_resized = dict()
-
-    log.info('GPU is {}'.format('available' if args.device is not None else 'not available (check cuda setup)'))
+    return args
 
 
-    def show_frame(frame, name, resized_dict):
-        """ Show the frame in named cv2 window and handle resizing
-        :param frame: 2d array of float
-        :param name: string name for window
-        :param resized_dict: dict to hold this frame for resizing operations
-        :param text: text to add at LL corner
-        """
-        cv2.namedWindow(name, cv2.WINDOW_NORMAL)
-        cv2.imshow(name, frame)
-        if not (name in resized_dict):
-            cv2.resizeWindow(name, 1800, 600)
-            resized_dict[name] = True
-            # wait minimally since interp takes time anyhow
-            cv2.waitKey(1)
-
-    if record is not None and space_toggles_recording and spacebar_records:
-        log.error('set either --spacebar_records or --space_toggles_recording')
-        quit(1)
-    if record is not None:
-        log.info(f'recording to {record} with spacebar_records={spacebar_records} space_toggles_recording={space_toggles_recording} and args {str(args)}')
-        recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
-        log.info(f'recording frames to {recording_folder}')
-        Path(recording_folder).mkdir(parents=True, exist_ok=True)
-
-    last_frame_number = 0
-    voxel_five_float32 = np.zeros((NUM_BINS, IMSIZE, IMSIZE))
-    c = 0
-    print_key_help()
-    frames_without_drop=0
-    while True:
-        # todo: reset state after a long period
-        if not args.use_firenet:
-            model.reset_states_i()
-            model.reset_states_a()
-            model.reset_states_d()
-        timestr = time.strftime("%Y%m%d-%H%M")
-        with Timer('overall consumer loop', numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy',
-                   show_hist=True, savefig=True):
-            with Timer('receive UDP'):
-                receive_data = server_socket.recv(UDP_BUFFER_SIZE)
-
-            with Timer('unpickle and normalize/reshape'):
-                (frame_number, timestamp, bin, frame_255,frame_min,frame_max) = pickle.loads(receive_data)
-                if bin == 0:
-                    voxel_five_float32 = np.zeros((1, NUM_BINS, IMSIZE, IMSIZE))
-                    c = 0
-                dropped_frames = frame_number - last_frame_number - 1
-                if dropped_frames > 0:
-                    log.warning(f'Dropped {dropped_frames} producer frames after {frames_without_drop} good frames')
-                    frames_without_drop=0
-                else:
-                    frames_without_drop+=1
-                last_frame_number = frame_number
-                # voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1 # map 0-255 range to -1,+1 range
-                # voxel_five_float32[:, bin, :, :] = voxel.astype(np.float32)
-                voxel_five_float32[:, bin, :, :] = ((frame_255.astype(np.float32))/255)*(frame_max-frame_min)+frame_min
-                c += 1
-            if c == NUM_BINS:
-                with Timer('run CNN', show_hist=True, savefig=True):
-                    input = torch.from_numpy(voxel_five_float32).float().to(device)
-                    if not args.use_firenet:  # e2p, just use voxel grid from producer
-                        output = model(input)
-                        intensity, aolp, dolp = compute_e2p_output(output)
-                    else:  # firenet, we need to extract the 4 angle channels and run firenet on each one
-
-                        intensity, aolp, dolp, aolp_mask = compute_firenet_output(input)
-
-                with Timer('show output frame'):
-                    mycv2_put_text(intensity, 'intensity')
-                    mycv2_put_text(aolp, 'AoLP')
-                    mycv2_put_text(dolp, 'DoLP')
-
-                    image = cv2.hconcat([intensity, aolp, dolp])
-                    show_frame(image, 'polarization', cv2_resized)
-                    if recording_folder is not None and (save_next_frame or recording_activated):
-                        recording_frame_number = write_next_image(recording_folder, recording_frame_number, frame_255)
-                        print('.', end='')
-                        if recording_frame_number % 80 == 0:
-                            print('')
-
-            # save time since frame sent from producer
-            dt = time.time() - timestamp
-
-            k = cv2.waitKey(1) & 0xFF
-            if k == ord('q') or k == ord('x'):
-                print('quitting....')
-                break
-            elif k == ord('h') or k == ord('?'):
-                print_key_help()
-            elif k == ord('p'):
-                print_timing_info()
-            elif k==ord('-'):
-                DOLP_AOLP_MASK_LEVEL=DOLP_AOLP_MASK_LEVEL*.9
-                print(f'decrased AoLP DoLP mask level to {DOLP_AOLP_MASK_LEVEL}')
-            elif k==ord('='):
-                DOLP_AOLP_MASK_LEVEL=DOLP_AOLP_MASK_LEVEL*(1/.9)
-                print(f'increased AoLP DoLP mask level to {DOLP_AOLP_MASK_LEVEL}')
-            elif k == ord('m'):
-                args.use_firenet = not args.use_firenet
-                model = load_selected_model(args)
-                print(f' changed mode to args.use_firenet={args.use_firenet}')
-            elif k != 255:
-                print_key_help()
-                print(f'unknown key {k}')
-
-    # calculate the computational efficiency
-    if args.calculate_mode:
-        flops, params = profile(model, inputs=(input,))
-        flops, params = clever_format([flops, params], "%.3f")
-        print(model)
-        print('[Statistics Information]\nFLOPs: {}\nParams: {}'.format(flops, params))
-        exit(0)
-
-    print_timing_info()
-    print(f'****** done running model {args.checkpoint_path}')
+if __name__ == '__main__':
+    consumer(None)

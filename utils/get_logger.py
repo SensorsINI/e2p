@@ -36,7 +36,7 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record).replace("\\", "/") #replace \ with / for pycharm links
 
 
-def get_logger(name='ControlToolkit'):
+def get_logger(name='Root'):
     """ Use get_logger to define a logger with useful color output and info and warning turned on according to the global LOGGING_LEVEL.
 
     :param name: ignored -- all loggers here have the name 'ControlToolkit' so that all can be affected uniformly
@@ -44,7 +44,7 @@ def get_logger(name='ControlToolkit'):
     :returns: the logger.
     """
     # logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-    logger = logging.getLogger(__name__) # tobi changed so all have same name so we can uniformly affect all of them
+    logger = logging.getLogger(name) # tobi changed so all have same name so we can uniformly affect all of them
     logger.setLevel(LOGGING_LEVEL)
     # create console handler if this logger does not have handler yet
     if len(logger.handlers)==0:
