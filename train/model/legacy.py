@@ -4,7 +4,7 @@ import torch.nn.functional as f
 from os.path import join
 import numpy as np
 # local modules
-from model.submodules import ConvLSTM, ResidualBlock, ConvLayer, \
+from train.model.submodules import ConvLSTM, ResidualBlock, ConvLayer, \
         UpsampleConvLayer, TransposedConvLayer, RecurrentConvLayer, RecurrentResidualLayer
 
 

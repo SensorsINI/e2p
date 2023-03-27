@@ -1,12 +1,12 @@
 """
- @Time    : 17.12.22 11:33
- @Author  : Haiyang Mei, Tobi Delbruck
- @E-mail  : haiyang.mei@outlook.com, tobi@ini.uzh.ch
- 
+ @Time    : 28.3.23
+ @Author  : Tobi Delbruck, Haiyang Mei, Zoowen Wang
+ @E-mail  : tobi@ini.uzh.ch
+
  @Project : pdavis_demo
- @File    : producer.py
+ @File    : consumer.py
  @Function:
- 
+
 """
 
 import atexit
@@ -38,6 +38,7 @@ from utils.get_logger import get_logger
 log=get_logger(__name__)
 
 # from events_contrast_maximization.utils.event_utils import events_to_voxel_torch  # WARNING: this function is not the same one used for e2p training
+
 from train.events_contrast_maximization.utils.event_utils import events_to_voxel_torch  # This one is the same as used for e2p training
 
 

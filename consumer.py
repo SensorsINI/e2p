@@ -1,7 +1,7 @@
 """
- @Time    : 17.12.22 11:33
- @Author  : Haiyang Mei
- @E-mail  : haiyang.mei@outlook.com
+ @Time    : 28.3.23
+ @Author  : Tobi Delbruck, Haiyang Mei, Zoowen Wang
+ @E-mail  : tobi@ini.uzh.ch
  
  @Project : pdavis_demo
  @File    : consumer.py

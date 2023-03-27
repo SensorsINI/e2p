@@ -1,14 +1,15 @@
+# runs entire PDAVIS E2P demo
+# author: Tobi Delbruck 2023
+
 import multiprocessing as mp
 from multiprocessing import Process, Pipe
 
 from producer import producer
 from consumer import consumer
 from utils.get_logger import get_logger
-
 log = get_logger(__name__)
 
-
-if __name__ == '__main__':
+def main():
     mp.set_start_method('spawn') # https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
     parent_conn, child_conn = Pipe() # half duplex, only send and recieve on other side
     log.debug('starting consumer and producer processes')
@@ -20,3 +21,6 @@ if __name__ == '__main__':
     c.join()
     p.join()
     log.debug('both consumer and producer processes have joined, done')
+
+if __name__ == '__main__':
+    main()

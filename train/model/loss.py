@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 # local modules
 from PerceptualSimilarity import models
-from utils import loss
+from train.utils import loss
 from model.mhy_ssim import ssim, ms_ssim, SSIM, MS_SSIM
 import torch.nn as nn
 import dct

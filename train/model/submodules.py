@@ -3,8 +3,8 @@ import torch.nn as nn
 # import torch.nn.functional as f
 import torch.nn.functional as F
 from torch.nn import init
-import dct
 import math
+import train.dct as dct
 from collections import OrderedDict
 
 class ConvLayer(nn.Module):
@@ -2917,7 +2917,7 @@ class ESA_Multiscale_Prediction(nn.Module):
         return fusion
 
 
-from model.ffc import FFCResnetBlock
+from train.model.ffc import FFCResnetBlock
 class FFC_IAD(nn.Module):
     def __init__(self, dim, block_number=2):
         super(FFC_IAD, self).__init__()
