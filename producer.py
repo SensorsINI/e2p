@@ -23,7 +23,9 @@ import numpy as np
 # from tqdm import tqdm
 import select
 import multiprocessing.connection as mpc
-from multiprocessing import  Pipe
+from multiprocessing import  Pipe,Queue
+
+from tqdm import tqdm
 
 from globals_and_utils import *
 from engineering_notation import EngNumber as eng # only from pip
@@ -47,21 +49,16 @@ def producer(pipe:Pipe):
     :param pipe: if started with a pipe, uses that for sending voxel volume
     """
     args=get_args()
-
-
     if pipe is None:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_address = ('', PORT)
         args.sensor_resolution=(IMSIZE,IMSIZE) # if we use UDP, we need to limit UDP packet size
     else:
         args.sensor_resolution=SENSOR_RESOLUTION # we can send the whole voxel volume over Pipe
-    recording_folder = None
-    recording_frame_number = 0
 
     # arg parser args
-    record = args.record
-    spacebar_records = args.spacebar_records
-    space_toggles_recording = args.space_toggles_recording
+    recording_folder_base = args.recording_folder
+    recording_folder_current=None
     flex_time_mode=args.flex_time_mode
     frame_duration_ms=args.frame_duration_ms
     frame_count_k_events=args.frame_count_k_events
@@ -69,7 +66,9 @@ def producer(pipe:Pipe):
     num_bins=args.num_bins
     sensor_resolution=args.sensor_resolution
 
+    recording_frame_number = 0
     warning_counter=0
+    paused=False
 
     # open davis camera, set biases
     device = DAVIS(noise_filter=True)
@@ -77,8 +76,8 @@ def producer(pipe:Pipe):
         log.info('closing {}'.format(device))
         device.shutdown()
         cv2.destroyAllWindows()
-        if recording_folder is not None:
-            log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
+        if recording_folder_base is not None and recording_frame_number>0:
+            log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder_base}')
     atexit.register(cleanup)
 
     print("DVS USB ID:", device.device_id)
@@ -92,6 +91,7 @@ def producer(pipe:Pipe):
     print("DVS USB device address:", device.device_usb_device_address)
     print("DVS size X:", device.dvs_size_X)
     print("DVS size Y:", device.dvs_size_Y)
+    dvs_resolution=(device.dvs_size_Y,device.dvs_size_X)
     print("Logic Version--checkpoint_path=models/checkpoint-epoch106.pth:", device.logic_version)
     print("Background Activity Filter:",
           device.dvs_has_background_activity_filter)
@@ -123,15 +123,9 @@ def producer(pipe:Pipe):
     biases_mtime=biases_config_file_path.stat().st_mtime  # get modification time of config
 
 
-
-    if record is not None and space_toggles_recording and spacebar_records:
-        log.error('set either --spacebar_records or --space_toggles_recording')
-        quit(1)
-    if record is not None:
-        log.info(f'recording to {record} with spacebar_records={spacebar_records} space_toggles_recording={space_toggles_recording} and args {str(args)}')
-        recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
-        log.info(f'recording frames to {recording_folder}')
-        Path(recording_folder).mkdir(parents=True, exist_ok=True)
+    # if recording_folder is not None:
+    #     log.info(f'will record to {recording_folder}')
+    #     Path(recording_folder).mkdir(parents=True, exist_ok=True)
 
     cv2_resized = False
     last_cv2_frame_time = time.time()
@@ -140,7 +134,6 @@ def producer(pipe:Pipe):
     time_last_frame_sent=time.time()
     frames_dropped_counter=0
     recording_activated=False
-    save_next_frame=(not space_toggles_recording and not spacebar_records) # if we don't supply the option, it will be False and we want to then save all frames
     saved_events=[]
 
     #https://stackoverflow.com/questions/45318798/how-to-detect-multiprocessing-pipe-is-full
@@ -151,8 +144,6 @@ def producer(pipe:Pipe):
 
     print_key_help()
     try:
-        timestr = time.strftime("%Y%m%d-%H%M")
-        numpy_frame_rate_data_file_path = f'{DATA_FOLDER}/producer-frame-rate-{timestr}.npy'
         printed_udp_size=False
         while True:
 
@@ -163,7 +154,7 @@ def producer(pipe:Pipe):
                 device.set_bias_from_json(BIASES_CONFIG_FILE)
                 biases_mtime=new_biases_mtime
 
-            with Timer('overall producer frame rate', numpy_file=numpy_frame_rate_data_file_path , show_hist=True, savefig=True) as timer_overall:
+            with Timer('overall producer frame rate') as timer_overall:
                 with Timer('accumulating DVS events'):
                     events = None
                     # while events is None or duration of collected events is less than desired keep accumulating events
@@ -179,10 +170,10 @@ def producer(pipe:Pipe):
                 # log.debug('got {} events (total so far {}/{} events)'
                 #          .format(num_pol_event, 0 if events is None else len(events), EVENT_COUNT))
                 dtMs = (time.time() - time_last_frame_sent)*1e3
-                if recording_folder is None and dtMs<MIN_PRODUCER_FRAME_INTERVAL_MS:
+                if recording_folder_base is None and dtMs<MIN_PRODUCER_FRAME_INTERVAL_MS:
                     if warning_counter<WARNING_INTERVAL or warning_counter%WARNING_INTERVAL==0:
                         warning_counter+=1
-                        log.debug(f'frame #{frames_dropped_counter} after only {dtMs:.3f}ms, discarding to avoid flooding consumer and instead to collect newer frame')
+                        log.debug(f'frame )#{frames_dropped_counter} after only {dtMs:.3f}ms, discarding to avoid flooding consumer and instead to collect newer frame')
                     frames_dropped_counter+=1
                     continue # just collect another frame since it will be more timely
                 if frames_dropped_counter>0:
@@ -207,7 +198,7 @@ def producer(pipe:Pipe):
                     ys = torch.from_numpy(events[:, 2].astype(np.float32)) # event y addresses
                     ts = torch.from_numpy((events[:, 0] - events[0, 0]).astype(np.float32)) # event relative timesamps in us
                     ps = torch.from_numpy((events[:, 3] * 2 - 1).astype(np.float32)) # change polarity from 0,1 to -1,+1 so that polarities are signed
-                    voxel = events_to_voxel_torch(xs, ys, ts, ps, num_bins, sensor_size=sensor_resolution, temporal_bilinear=True) # TODO temporal_bilinear=False broken
+                    voxel = events_to_voxel_torch(xs, ys, ts, ps, num_bins, sensor_size=dvs_resolution, temporal_bilinear=True) # TODO temporal_bilinear=False broken
                     # The DNN is trained with 112x112 but can test on 346x260. We crop it to 224x224 to enable UDP transfer otherwise it will be too large.
                     voxel = voxel[:, 0:args.sensor_resolution[0], 0:args.sensor_resolution[1]] # crop out UL corner from entire voxel frame to limit to max possible UDP packet size
                     pass
@@ -241,11 +232,6 @@ def producer(pipe:Pipe):
                             frame_number+=1
                             client_socket.sendto(data, udp_address)
 
-                if recording_folder is not None and (save_next_frame or recording_activated):
-                    recording_frame_number=write_next_image(recording_folder, recording_frame_number, frame_255[-1])
-                    print('.', end='')
-                    if recording_frame_number%80==0:
-                        print('')
 
                 if SHOW_DVS_OUTPUT:
                     t=time.time()
@@ -267,10 +253,12 @@ def producer(pipe:Pipe):
                             if not cv2_resized:
                                 cv2.resizeWindow('DVS', args.sensor_resolution[1]*2, args.sensor_resolution[0]*2)
                                 cv2_resized = True
+
+                            # process key commands
                             k = cv2.waitKey(1) & 0xFF
                             if k == ord('q') or k == ord('x'):
-                                if recording_folder is not None:
-                                    log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder}')
+                                if recording_folder_base is not None:
+                                    log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder_base}')
                                 print_timing_info()
                                 break
                             elif k==ord('t'):
@@ -297,21 +285,31 @@ def producer(pipe:Pipe):
                                     print(f'longer frames now are {frame_duration_ms}ms long')
                             elif k == ord('p'):
                                 print_timing_info()
-                            elif k == ord(' ') and (spacebar_records or space_toggles_recording):
-                                if spacebar_records:
-                                    save_next_frame=True
+                            elif k == ord('r'):
+                                if not recording_activated:
+                                    recording_activated=True
+                                    recording_folder_current=os.path.join(recording_folder_base,get_timestr())
+                                    Path(recording_folder_current).mkdir(parents=True, exist_ok=True)
+                                    log.info(f'started recording to folder {recording_folder_current}')
                                 else:
-                                    recording_activated=not recording_activated
-                                    if recording_activated:
-                                        print('recording activated - use space to stop recording\n')
-                                    else:
-                                        print('recording paused - use space to start recording\n')
-                                    save_next_frame=recording_activated
+                                    recording_activated=False
+                                    log.info(f'stopped recording to folder {recording_folder_current}')
+
+                            elif k==ord(' '):
+                                paused=not paused
+                                print(f'paused={paused}')
                             elif k==ord('h') or k==ord('?'):
                                 print_key_help()
-                            else:
-                                save_next_frame=(recording_activated or (not spacebar_records and not space_toggles_recording))
-        if saved_events is not None and recording_folder is not None and len(saved_events)>0:
+                            elif k!=255:
+                                log.warning(f'unknown keystroke {k}')
+                    if recording_activated:
+                        recording_frame_number = write_next_image(recording_folder_current, recording_frame_number,
+                                                                  frame_255[-1])
+                        print('.', end='')
+                        if recording_frame_number % 80 == 0:
+                            print('')
+
+        if saved_events is not None and recording_folder_base is not None and len(saved_events)>0:
             nevents=0
             for a in saved_events:
                 nevents+=len(a)
@@ -320,12 +318,18 @@ def producer(pipe:Pipe):
             for a in tqdm(saved_events,desc='converting events to numpy'):
                 o[idx:idx+a.shape[0]]=a
                 idx+=a.shape[0]
-            data_path=os.path.join(recording_folder,f'events-{timestr}.npy')
+            data_path=os.path.join(recording_folder_base,f'events-{get_timestr()}.npy')
             log.info(f'saving {eng(nevents)} events to {data_path}')
             np.save(data_path,o)
     except KeyboardInterrupt as e:
         log.info(f'got KeyboardInterrupt {e}')
         cleanup()
+
+
+def get_timestr():
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    return timestr
+
 
 def increase(val,limit):
     return val*2 if val*2<=limit else limit
@@ -354,20 +358,20 @@ def print_key_help():
 
 def get_args():
     parser = argparse.ArgumentParser(description='producer: Generates DVS frames for pdavis_demo to process in consumer', allow_abbrev=True, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--record", type=str, default=None, help=f"record DVS frames into folder {os.path.join(DATA_FOLDER, 'recordings','<name>')}")
+    parser.add_argument("--recording_folder", type=str, default=RECORDING_FOLDER, help=f"record DVS frames into folder {RECORDING_FOLDER}")
     parser.add_argument("--flex_time_mode", type=bool, default=FLEX_TIME_MODE, help="True to use frame_count_k_events input, False to use frame_duration_ms")
     parser.add_argument("--frame_duration_ms", type=int, default=FRAME_DURATION_US/1000, help="duration of frame exposure per total voxel volume")
     parser.add_argument("--frame_count_k_events", type=int, default=FRAME_COUNT_EVENTS/1000, help="duration of frame exposure per total voxel volume")
     parser.add_argument("--num_bins", type=int, default=NUM_BINS, help="number of bins for event voxel")
     parser.add_argument("--sensor_resolution", type=tuple, default=SENSOR_RESOLUTION, help="sensor resolution as tuple (height, width)")
-    parser.add_argument("--spacebar_records", action='store_true', help="only record when spacebar pressed down")
-    parser.add_argument("--space_toggles_recording", action='store_true', default=True, help="space toggles recording on/off")
-    parser.add_argument("--numpy", action='store_true', default=True, help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")
+    parser.add_argument("--numpy", action='store_true', default=False, help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")
     parser.add_argument('--e2p', action='store_true', default=True, help='set required parameters to run events to polarity e2p DNN')
     parser.add_argument('--e2vid', action='store_true', default=False, help='set required parameters to run original e2vid as described in Rebecq20PAMI for polariziation reconstruction')
     parser.add_argument('--firenet_legacy', action='store_true', default=False, help='set required parameters to run legacy firenet as described in Scheerlinck20WACV (not for retrained models using updated code)')
     args = parser.parse_args()
     return args
+
+
 
 if __name__ == '__main__':
     producer(None)

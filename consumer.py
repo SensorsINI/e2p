@@ -38,7 +38,7 @@ except Exception as e:
 import e2p as model_arch
 from utils.henri_compatible import make_henri_compatible
 from parse_config import ConfigParser
-from multiprocessing import  Pipe
+from multiprocessing import  Pipe,Queue
 
 def consumer(pipe:Pipe):
     """
@@ -50,11 +50,9 @@ def consumer(pipe:Pipe):
     states = None  # firenet states, to feed back into firenet
     model = None
 
-    recording_folder = None
+    recording_folder_base = args.recording_folder
+    recording_folder_current=None
     recording_frame_number = 0
-    record = args.record
-    spacebar_records = args.spacebar_records
-    space_toggles_recording = args.space_toggles_recording
 
     if pipe is None:
         log.info('opening UDP port {} to receive frames from producer'.format(PORT))
@@ -75,9 +73,7 @@ def consumer(pipe:Pipe):
     model = load_selected_model(args, device)
     log.info('GPU is {}'.format('available' if args.device is not None else 'not available (check cuda setup)'))
 
-
     cv2_resized = dict()
-
 
     def show_frame(frame, name, resized_dict):
         """ Show the frame in named cv2 window and handle resizing
@@ -94,18 +90,7 @@ def consumer(pipe:Pipe):
             # wait minimally since interp takes time anyhow
             cv2.waitKey(1)
 
-    if record is not None and space_toggles_recording and spacebar_records:
-        log.error('set either --spacebar_records or --space_toggles_recording')
-        quit(1)
-    if record is not None:
-        log.info(
-            f'recording to {record} with spacebar_records={spacebar_records} space_toggles_recording={space_toggles_recording} and args {str(args)}')
-        recording_folder = os.path.join(DATA_FOLDER, 'recordings', record)
-        log.info(f'recording frames to {recording_folder}')
-        Path(recording_folder).mkdir(parents=True, exist_ok=True)
-
     recording_activated=False
-    save_next_frame=(not space_toggles_recording and not spacebar_records) # if we don't supply the option, it will be False and we want to then save all frames
     last_frame_number = 0
     voxel_five_float32 = None
     c = 0
@@ -121,6 +106,8 @@ def consumer(pipe:Pipe):
         with Timer('overall consumer loop', show_hist=True, savefig=True):
             k = cv2.waitKey(1) & 0xFF
             if k == ord('q') or k == ord('x'):
+                if recording_folder_current is not None:
+                    log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder_current}')
                 print('quitting....')
                 break
             elif k == ord('h') or k == ord('?'):
@@ -138,6 +125,15 @@ def consumer(pipe:Pipe):
                 args.use_firenet = not args.use_firenet
                 model = load_selected_model(args, device)
                 print(f' changed mode to args.use_firenet={args.use_firenet}')
+            elif k == ord('r'):
+                if not recording_activated:
+                    recording_activated = True
+                    recording_folder_current = os.path.join(recording_folder_base, get_timestr())
+                    Path(recording_folder_current).mkdir(parents=True, exist_ok=True)
+                    log.info(f'started recording to folder {recording_folder_current}')
+                else:
+                    recording_activated = False
+                    log.info(f'stopped recording to folder {recording_folder_current}')
             elif k != 255:
                 print_key_help()
                 print(f'unknown key {k}')
@@ -159,7 +155,7 @@ def consumer(pipe:Pipe):
 
                     (frame_number, timestamp, bin, frame_255, frame_min, frame_max) = pickle.loads(receive_data)
                     if bin == 0:
-                        voxel_five_float32 = np.zeros((1, NUM_BINS, args.sensor_resolution[0], args.sensor_resolution[1]))
+                        voxel_five_float32 = np.zeros((1, NUM_BINS, args.sensor_resolution[0], args.sensor_resolution[1]),dtype=np.float32)
                         c = 0
                     dropped_frames = frame_number - last_frame_number - 1
                     if dropped_frames > 0:
@@ -170,8 +166,7 @@ def consumer(pipe:Pipe):
                     last_frame_number = frame_number
                     # voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1 # map 0-255 range to -1,+1 range
                     # voxel_five_float32[:, bin, :, :] = voxel.astype(np.float32)
-                    voxel_five_float32[:, bin, :, :] = ((frame_255.astype(np.float32)) / 255) * (
-                                frame_max - frame_min) + frame_min
+                    voxel_five_float32[:, bin, :, :] = ((frame_255.astype(np.float32)) / 255) * (frame_max - frame_min) + frame_min
                     c += 1
             if c == NUM_BINS:
                 with Timer('run CNN', show_hist=True, savefig=True):
@@ -190,8 +185,8 @@ def consumer(pipe:Pipe):
 
                     image = cv2.hconcat([intensity, aolp, dolp])
                     show_frame(image, 'polarization', cv2_resized)
-                    if recording_folder is not None and (save_next_frame or recording_activated):
-                        recording_frame_number = write_next_image(recording_folder, recording_frame_number, frame_255)
+                    if recording_activated:
+                        recording_frame_number = write_next_image(recording_folder_current, recording_frame_number, image)
                         print('.', end='')
                         if recording_frame_number % 80 == 0:
                             print('')
@@ -202,18 +197,22 @@ def consumer(pipe:Pipe):
         flops, params = profile(model, inputs=(input,))
         flops, params = clever_format([flops, params], "%.3f")
         print(model)
-        print('[Statistics Information]\nFLOPs: {}\nParams: {}'.format(flops, params))
+        print('[Model Ops/Size Information]\nFLOPs: {}\nParams: {}'.format(flops, params))
 
     print_timing_info()
     print(f'****** done running model {args.checkpoint_path}')
 
+def get_timestr():
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    return timestr
 
 def print_key_help():
     print('producer keys to use in cv2 image window:\n'
           '- or =: decrease or increase the AoLP DoLP mask level'
           'h or ?: print this help\n'
           'p: print timing info\n'
-          'space: toggle or turn on while space down recording\n'
+          'r: toggle or turn on while down recording\n'
+          'space: toggle pause\n'
           'm: toggle between e2p and firenet models\n'
           'q or x: exit')
 
@@ -377,19 +376,16 @@ def get_args():
     parser = argparse.ArgumentParser(description='consumer: Consumes DVS frames to process', allow_abbrev=True,
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--sensor_resolution", type=tuple, default=SENSOR_RESOLUTION, help="sensor resolution as tuple (height, width)")
-    parser.add_argument("--record", type=str, default=None, help=f"record E2P output frames into folder {os.path.join(DATA_FOLDER, 'recordings', '<name>')}")
-    parser.add_argument("--space_toggles_recording", action='store_true', default=True, help="space toggles recording on/off")
-    parser.add_argument("--spacebar_records", action='store_true', help="only record when spacebar pressed down")
+    parser.add_argument("--recording_folder", type=str, default=RECORDING_FOLDER, help=f"record DVS frames into folder {RECORDING_FOLDER}")
     parser.add_argument('--dolp_aolp_mask_level', type=float, default=DOLP_AOLP_MASK_LEVEL, help='level of DoLP below which to mask the AoLP value since it is likely not meaningful')
+    parser.add_argument('--e2p', action='store_true', default=True, help='set required parameters to run events to polarity e2p DNN')
     parser.add_argument('--use_firenet', action='store_true', default=USE_FIRENET, help='use (legacy) firenet instead of e2p')
     parser.add_argument('--checkpoint_path', type=str, default=None, help='path to latest checkpoint, if not specified, uses E2P_MODEL global')
     parser.add_argument('--browse_checkpoint', action='store_true', default=False, help='open file dialog to select model checkpoint')
-    parser.add_argument('--output_folder', default="/tmp/output", type=str, help='where to save outputs to')
+    # parser.add_argument('--output_folder', default="/tmp/output", type=str, help='where to save outputs to')
     parser.add_argument('--device', default='0', type=str, help='indices of GPUs to enable')
-    parser.add_argument('--filter_hot_events', action='store_true', help='If true, auto-detect and remove hot pixels')
-    parser.add_argument('--legacy_norm', action='store_true', default=False, help='Normalize nonzero entries in voxel to have mean=0, std=1 according to Rebecq20PAMI and Scheerlinck20WACV.If --e2vid or --firenet_legacy are set, --legacy_norm will be set to True (default False).')
-    parser.add_argument('--robust_norm', action='store_true', default=False, help='Normalize voxel')
-    parser.add_argument('--e2p', action='store_true', default=True, help='set required parameters to run events to polarity e2p DNN')
+    # parser.add_argument('--legacy_norm', action='store_true', default=False, help='Normalize nonzero entries in voxel to have mean=0, std=1 according to Rebecq20PAMI and Scheerlinck20WACV.If --e2vid or --firenet_legacy are set, --legacy_norm will be set to True (default False).')
+    # parser.add_argument('--robust_norm', action='store_true', default=False, help='Normalize voxel')
     parser.add_argument('--calculate_model_flops_size', action='store_true', default=False, help='Calculate the model num parameters and FLOPs per frame.')
 
     args = parser.parse_args()

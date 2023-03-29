@@ -100,15 +100,12 @@ MIN_PRODUCER_FRAME_INTERVAL_MS=3.0 # inference takes about 15ms for PDAVIS recon
         # passed since last frame was sent. That way, we make sure not to flood the consumer
 MAX_SHOWN_DVS_FRAME_RATE_HZ=30 # limits cv2 rendering of DVS frames to reduce loop latency for the producer
 ROOT_DATA_FOLDER= os.path.join(get_download_folder(), 'pdavis_demo_dataset') # does not properly find the Downloads folder under Windows if not on same disk as Windows
+DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER, 'data') #/home/tobi/Downloads/pdavis_demo_dataset/data' #'data'  # new samples stored here
+RECORDING_FOLDER = os.path.join(DATA_FOLDER, 'recordings') #/home/tobi/Downloads/pdavis_demo_dataset/data' #'data'  # new samples stored here
 
 PORT = 12000  # UDP port used to send frames from producer to consumer
 UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / math.log(2))))
 
-DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER, 'data') #/home/tobi/Downloads/pdavis_demo_dataset/data' #'data'  # new samples stored here
-
-LOG_DIR='logs'
-SRC_DATA_FOLDER = os.path.join(ROOT_DATA_FOLDER,'source_data') #'/home/tobi/Downloads/trixsyDataset/source_data'
-TRAIN_DATA_FOLDER=os.path.join(ROOT_DATA_FOLDER,'training_dataset') #'/home/tobi/Downloads/trixsyDataset/training_dataset' # the actual training data that is produced by split from dataset_utils/make_train_valid_test()
 
 USE_FIRENET=False # True to use firenet DNN from Cedric, False to use e2p DNN
 E2P_MODEL= 'models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth' # 'models/e2ptobi-data.pth' #'./e2p-cvpr2023.pth'
