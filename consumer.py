@@ -70,7 +70,7 @@ def consumer(pipe:Pipe):
     if args.device is not None:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.device
     log.info('Loading checkpoint: {} ...'.format(args.checkpoint_path))
-    model = load_selected_model(args, device)
+    model,checkpoint_path = load_selected_model(args, device)
     log.info('GPU is {}'.format('available' if args.device is not None else 'not available (check cuda setup)'))
 
     cv2_resized = dict()
@@ -123,7 +123,7 @@ def consumer(pipe:Pipe):
                 print(f'increased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
             elif k == ord('m'):
                 args.use_firenet = not args.use_firenet
-                model = load_selected_model(args, device)
+                model,checkpoint_path = load_selected_model(args, device)
                 print(f' changed mode to args.use_firenet={args.use_firenet}')
             elif k == ord('r'):
                 if not recording_activated:
@@ -200,7 +200,7 @@ def consumer(pipe:Pipe):
         print('[Model Ops/Size Information]\nFLOPs: {}\nParams: {}'.format(flops, params))
 
     print_timing_info()
-    print(f'****** done running model {args.checkpoint_path}')
+    print(f'****** done running model {checkpoint_path}')
 
 def get_timestr():
     timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -353,24 +353,24 @@ def load_selected_model(args, device):
 
     # initial network model
     if not args.use_firenet:
-        path = E2P_MODEL if args.checkpoint_path is None else args.checkpoint_path
-        p = Path(path)
+        checkpoint_path = E2P_MODEL if args.checkpoint_path is None else args.checkpoint_path
+        p = Path(checkpoint_path)
         if not p.is_file():
             raise FileNotFoundError(f'model --checkpoint_path={args.checkpoint_path} does not exist. Maybe you used single quote in args? Use double quote.')
-        log.info(f'loading checkpoint model path from {path} with torch.load()')
-        checkpoint = torch.load(path)
+        log.info(f'loading checkpoint model path from {checkpoint_path} with torch.load()')
+        checkpoint = torch.load(checkpoint_path)
         # args, checkpoint = legacy_compatibility(args, checkpoint)
         model = load_e2p_model(checkpoint,device)
     else:  # load firenet
         from rpg_e2vid.utils.loading_utils import load_model as load_firenet_model
-        path = FIRENET_MODEL if args.checkpoint_path is None else args.checkpoint_path
-        model = load_firenet_model(path)
+        checkpoint_path = FIRENET_MODEL if args.checkpoint_path is None else args.checkpoint_path
+        model = load_firenet_model(checkpoint_path)
         model = model.to(device)
         model.eval()
         for param in model.parameters():
             param.requires_grad = False
 
-    return model
+    return model,checkpoint_path
 
 def get_args():
     parser = argparse.ArgumentParser(description='consumer: Consumes DVS frames to process', allow_abbrev=True,

@@ -151,7 +151,10 @@ def producer(pipe:Pipe):
             new_biases_mtime = biases_config_file_path.stat().st_mtime  # get modification time of config
             if new_biases_mtime>biases_mtime:
                 log.info(f'bias config file change detected, reloading {BIASES_CONFIG_FILE}')
-                device.set_bias_from_json(BIASES_CONFIG_FILE)
+                try:
+                    device.set_bias_from_json(BIASES_CONFIG_FILE)
+                except Exception as e:
+                    log.warning(f'formatting error in biases file {BIASES_CONFIG_FILE}: {str(e)}')
                 biases_mtime=new_biases_mtime
 
             with Timer('overall producer frame rate') as timer_overall:
@@ -324,7 +327,6 @@ def producer(pipe:Pipe):
     except KeyboardInterrupt as e:
         log.info(f'got KeyboardInterrupt {e}')
         cleanup()
-
 
 def get_timestr():
     timestr = time.strftime("%Y%m%d-%H%M%S")

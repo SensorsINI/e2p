@@ -49,6 +49,7 @@ def main():
     con.join()
     pro.join()
     log.debug('both consumer and producer processes have joined, done')
+    quit(0)
 
 if __name__ == '__main__':
     main()
