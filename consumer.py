@@ -40,6 +40,8 @@ from utils.henri_compatible import make_henri_compatible
 from parse_config import ConfigParser
 from multiprocessing import  Pipe,Queue
 
+
+
 def consumer(pipe:Pipe):
     """
     consume frames to predict polarization
@@ -96,13 +98,9 @@ def consumer(pipe:Pipe):
     c = 0
     print_key_help()
     frames_without_drop = 0
-    while True:
-        # todo: reset state after a long period
-        if not args.use_firenet:
-            model.reset_states_i()
-            model.reset_states_a()
-            model.reset_states_d()
-        # timestr = time.strftime("%Y%m%d-%H%M") # numpy_file=f'{DATA_FOLDER}/consumer-frame-rate-{timestr}.npy'
+    reset_e2p_state(args,model)
+
+    while True: # main animation loop start
         with Timer('overall consumer loop', show_hist=True, savefig=True):
             k = cv2.waitKey(1) & 0xFF
             if k == ord('q') or k == ord('x'):
@@ -117,14 +115,17 @@ def consumer(pipe:Pipe):
             elif k == ord('-'):
                 args.dolp_aolp_mask_level*= .9
                 print(f'decrased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
-            elif k == ord('='):
+            elif k == ord('='): # change mask level for displaying AoLP
                 args.dolp_aolp_mask_level/= .9
                 print(f'increased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
                 print(f'increased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
-            elif k == ord('m'):
-                args.use_firenet = not args.use_firenet
-                model,checkpoint_path = load_selected_model(args, device)
-                print(f' changed mode to args.use_firenet={args.use_firenet}')
+            elif k==ord('e'): # reset network state
+                log.info('resetting E2P state')
+                reset_e2p_state(args, model)
+            # elif k == ord('m'): # TODO currently broken
+            #     args.use_firenet = not args.use_firenet
+            #     model,checkpoint_path = load_selected_model(args, device)
+            #     print(f' changed mode to args.use_firenet={args.use_firenet}')
             elif k == ord('r'):
                 if not recording_activated:
                     recording_activated = True
@@ -142,7 +143,15 @@ def consumer(pipe:Pipe):
                 if pipe:
                     # log.debug('receiving entire voxel volume on pipe')
                     if pipe.poll(timeout=1):
-                        voxel_five_float32 = pipe.recv()
+                        (voxel_five_float32, frame_number, time_last_frame_sent) = pipe.recv()
+                        dropped_frames = frame_number - last_frame_number - 1
+                        if dropped_frames > 0:
+                            log.warning(
+                                f'Dropped {dropped_frames} producer frames after {frames_without_drop} good frames')
+                            frames_without_drop = 0
+                        else:
+                            frames_without_drop += 1
+                        last_frame_number = frame_number
                     else:
                         image=np.zeros(args.sensor_resolution,dtype=np.uint8)
                         show_frame(image, 'polarization', cv2_resized)
@@ -153,7 +162,7 @@ def consumer(pipe:Pipe):
                     receive_data = server_socket.recv(UDP_BUFFER_SIZE)
 
 
-                    (frame_number, timestamp, bin, frame_255, frame_min, frame_max) = pickle.loads(receive_data)
+                    (frame_number, time_last_frame_sent, bin, frame_255, frame_min, frame_max) = pickle.loads(receive_data)
                     if bin == 0:
                         voxel_five_float32 = np.zeros((1, NUM_BINS, args.sensor_resolution[0], args.sensor_resolution[1]),dtype=np.float32)
                         c = 0
@@ -174,6 +183,8 @@ def consumer(pipe:Pipe):
                     if not args.use_firenet:  # e2p, just use voxel grid from producer
                         output = model(input)
                         intensity, aolp, dolp = compute_e2p_output(model, output, args) # output are RGB images with gray, HSV, and HOT coding
+                        if frames_without_drop>0 and frames_without_drop%args.reset_period==0:
+                            reset_e2p_state(args,model)
                     else:  # firenet, we need to extract the 4 angle channels and run firenet on each one
 
                         intensity, aolp, dolp, aolp_mask = compute_firenet_output(model,input, states)
@@ -201,24 +212,38 @@ def consumer(pipe:Pipe):
 
     print_timing_info()
     print(f'****** done running model {checkpoint_path}')
+################### end of main
+
+def reset_e2p_state(args, model):
+    """ Reset the internal hidden states of E2P."""
+    if args.e2p:
+        log.debug('resetting E2P state')
+        model.reset_states_i()
+        model.reset_states_a()
+        model.reset_states_d()
+
 
 def get_timestr():
+    """ Get a timestamp str for recording folder names."""
     timestr = time.strftime("%Y%m%d-%H%M%S")
     return timestr
 
 def print_key_help():
-    print('producer keys to use in cv2 image window:\n'
-          '- or =: decrease or increase the AoLP DoLP mask level'
+    """Print keyboard help."""
+    print(f'producer keys to use in cv2 image window:\n'
+          '- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
           'h or ?: print this help\n'
           'p: print timing info\n'
-          'r: toggle or turn on while down recording\n'
+          'r: toggle recording on/off; see console output for timestamped output folder\n'
+          'e: reset E2P hidden state; it is currently reset every {args.reset_period} frames by --reset_period argument\n'
           'space: toggle pause\n'
-          'm: toggle between e2p and firenet models\n'
+          # 'm: toggle between e2p and firenet models\n'
           'q or x: exit')
 
 
 def legacy_compatibility(args, checkpoint):
-    assert args.e2p and not (args.e2vid and args.firenet_legacy)
+    """ Modify checkpoint so that all model types have same signature."""
+    assert args.e2p and not (args.e2vid and args.firenet_legacy) # TODO clean up options
     if args.e2vid:
         args.legacy_norm = True
         final_activation = 'sigmoid'
@@ -236,6 +261,7 @@ def legacy_compatibility(args, checkpoint):
 
 
 def load_e2p_model(checkpoint, device):
+    """ Load the E2P model checkpoint and put on particular device (cuda or cpu)"""
     config = checkpoint['config']
     log.info(f'configuration is {config["arch"]}')
     state_dict = checkpoint['state_dict']
@@ -307,7 +333,7 @@ def norm_max_min(v):
 
 
 def compute_e2p_output(model, output, args):
-    """ Computes intensity, aolp, dolp outputs from  E2P output
+    """ Computes intensity, aolp, dolp outputs from  E2P output.
     :param output: DNN output
     :returns: intensity, aolp, dolp
         RGB color 2d images for cv2.imshow to render
@@ -340,6 +366,7 @@ def compute_e2p_output(model, output, args):
 
 
 def load_selected_model(args, device):
+    """ Loads desired checkpoint E2P model, either from file browser or args. Put it on particular device (cuda or cpu)."""
     if args.browse_checkpoint:
         lastmodel=prefs.get('last_model_selected','models/*.pth')
         f = fileopenbox(msg='select model checkpoint', title='Model checkpoint', default=lastmodel,
@@ -378,6 +405,7 @@ def get_args():
     parser.add_argument("--sensor_resolution", type=tuple, default=SENSOR_RESOLUTION, help="sensor resolution as tuple (height, width)")
     parser.add_argument("--recording_folder", type=str, default=RECORDING_FOLDER, help=f"record DVS frames into folder {RECORDING_FOLDER}")
     parser.add_argument('--dolp_aolp_mask_level', type=float, default=DOLP_AOLP_MASK_LEVEL, help='level of DoLP below which to mask the AoLP value since it is likely not meaningful')
+    parser.add_argument('--reset_period', type=int, default=E2P_RESET_PERIOD, help='The E2P state is reset every this many frames')
     parser.add_argument('--e2p', action='store_true', default=True, help='set required parameters to run events to polarity e2p DNN')
     parser.add_argument('--use_firenet', action='store_true', default=USE_FIRENET, help='use (legacy) firenet instead of e2p')
     parser.add_argument('--checkpoint_path', type=str, default=None, help='path to latest checkpoint, if not specified, uses E2P_MODEL global')

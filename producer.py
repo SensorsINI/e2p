@@ -213,10 +213,11 @@ def producer(pipe:Pipe):
                         if pipe_full(pipe):
                             log.warning('pipe is full, cannot send voxel volume')
                         else:
-                            pipe.send(voxel_4d)
+                            frame_number+=1
+                            time_last_frame_sent=time.time()
+                            pipe.send((voxel_4d, frame_number, time_last_frame_sent))
                         # log.debug('sent entire voxel volume on pipe')
                     else:
-                        time_last_frame_sent=time.time()
                         # data = pickle.dumps((frame_number, time_last_frame_sent, voxel[0, :, :])) # send frame_number to allow determining dropped frames in consumer
                         # data = pickle.dumps((frame_number, time_last_frame_sent, frame)) # send frame_number to allow determining dropped frames in consumer
                         frame_float=voxel.numpy()
@@ -225,6 +226,8 @@ def producer(pipe:Pipe):
                         frame_255=(((frame_float-frame_min)/(frame_max-frame_min))*255).astype(np.uint8) # do per channel normalization to [0,1], then scale to [0,255]
 
                         for bin in range(NUM_BINS): # send bin by bin (really frame by frame) to consumer, each one is 224x224 bytes which is about 50kB, OK for UDP
+                            frame_number+=1
+                            time_last_frame_sent=time.time()
                             data = pickle.dumps((frame_number, time_last_frame_sent, bin, frame_255[bin],frame_min[bin],frame_max[bin]))
                             if not printed_udp_size:
                                 if len(data)>64000:
@@ -232,7 +235,6 @@ def producer(pipe:Pipe):
                                 else:
                                     printed_udp_size=True
                                     log.info(f'UDP packet size for first frame is {len(data)} bytes')
-                            frame_number+=1
                             client_socket.sendto(data, udp_address)
 
 

@@ -92,6 +92,7 @@ NUM_BINS = 5 # number of bins for event voxel (frames), must be 5
 SENSOR_RESOLUTION = (260, 346) # sensor resolution in pixels, vertical, horizontal
 IMSIZE = 224  # CNN input image size, must be small enough that single frame of bytes is less than 64kB for UDP
 DOLP_AOLP_MASK_LEVEL=.35 # level of DoLP below which to mask the AoLP value since it is likely not meaningful
+E2P_RESET_PERIOD=60 # The E2P DNN is reset every this many frames; 60 was used in training
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for collecting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
 MIN_PRODUCER_FRAME_INTERVAL_MS=3.0 # inference takes about 15ms for PDAVIS reconstruction and normalization takes 3ms
