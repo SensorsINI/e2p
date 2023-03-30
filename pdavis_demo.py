@@ -3,7 +3,7 @@
 
 import multiprocessing as mp
 import time
-from multiprocessing import Process, Pipe, Queue
+from multiprocessing import Process, Pipe, Queue, SimpleQueue
 
 from producer import producer
 from consumer import consumer
@@ -26,11 +26,13 @@ def main():
         # print('r toggle recording')
 
     mp.set_start_method('spawn') # https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
-    parent_conn, child_conn = Pipe() # half duplex, only send and recieve on other side
+    queue=Queue()
+    # parent_conn, child_conn = Pipe() # half duplex, only send and recieve on other side
     log.debug('starting PDAVIS demo consumer and producer processes')
-    con = Process(target=consumer, args=(child_conn,),name='consumer')
-    pro = Process(target=producer, args=(parent_conn,),name='producer')
+    con = Process(target=consumer, args=(queue,),name='consumer')
     con.start()
+    time.sleep(8) # give some time to load E2P
+    pro = Process(target=producer, args=(queue,),name='producer')
     pro.start()
     log.debug('waiting for consumer and producer processes to join')
     if kbAvailable:
@@ -42,12 +44,12 @@ def main():
                 print_help()
             elif ord(ch) == 27 or ch == 'x':  # ESC, 'x'
                 log.info("\nterminating producer and consumer....")
-                con.terminate()
                 pro.terminate()
+                con.terminate()
                 break
         time.sleep(.3)
-    con.join()
     pro.join()
+    con.join()
     log.debug('both consumer and producer processes have joined, done')
     quit(0)
 

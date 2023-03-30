@@ -44,12 +44,12 @@ log=get_logger(__name__)
 from train.events_contrast_maximization.utils.event_utils import events_to_voxel_torch  # This one is the same as used for e2p training
 
 
-def producer(pipe:Pipe):
+def producer(queue:Queue):
     """ produce frames for consumer
-    :param pipe: if started with a pipe, uses that for sending voxel volume
+    :param queue: if started with a queue, uses that for sending voxel volume
     """
     args=get_args()
-    if pipe is None:
+    if queue is None:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_address = ('', PORT)
         args.sensor_resolution=(IMSIZE,IMSIZE) # if we use UDP, we need to limit UDP packet size
@@ -207,15 +207,17 @@ def producer(pipe:Pipe):
                     pass
 
                 with Timer('sending voxels to consumer'):
-                    if pipe:
+                    if queue:
                         voxel_4d=np.expand_dims(voxel.numpy(),0) # need to expand to 4d for input to DNN
                         # log.debug(f'sending entire voxel volume on pipe with shape={voxel_4d.shape}')
-                        if pipe_full(pipe):
-                            log.warning('pipe is full, cannot send voxel volume')
+                        if not queue.empty():
+                            log.warning('queue is full, cannot send voxel volume')
                         else:
                             frame_number+=1
                             time_last_frame_sent=time.time()
-                            pipe.send((voxel_4d, frame_number, time_last_frame_sent))
+                            # following blocks until frame can be put on Pipe... it means if the source frame rate is too high, the consumer
+                            # will not drop frames but just lag very far behind
+                            queue.put((voxel_4d, frame_number, time_last_frame_sent))
                         # log.debug('sent entire voxel volume on pipe')
                     else:
                         # data = pickle.dumps((frame_number, time_last_frame_sent, voxel[0, :, :])) # send frame_number to allow determining dropped frames in consumer
@@ -246,7 +248,7 @@ def producer(pipe:Pipe):
                             # min = np.min(frame)
                             # img = ((frame - min) / (np.max(frame) - min))
                             cv2.namedWindow('DVS', cv2.WINDOW_NORMAL)
-                            if pipe: # we need to render from last frame of voxel volume here since we just sent the whole thing over pipe as float
+                            if queue: # we need to render from last frame of voxel volume here since we just sent the whole thing over pipe as float
                                 frame_float = voxel.numpy()[-1]
                                 frame_min = np.min(frame_float)
                                 frame_max = np.max(frame_float)

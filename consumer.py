@@ -11,6 +11,8 @@
 
 import argparse
 import pickle
+from queue import Empty
+
 import cv2
 import socket
 
@@ -42,10 +44,10 @@ from multiprocessing import  Pipe,Queue
 
 
 
-def consumer(pipe:Pipe):
+def consumer(queue:Queue):
     """
     consume frames to predict polarization
-    :param pipe: if started with a pipe, uses that for input of voxel volume
+    :param queue: if started with a queue, uses that for input of voxel volume
     """
     args=get_args()
 
@@ -55,8 +57,9 @@ def consumer(pipe:Pipe):
     recording_folder_base = args.recording_folder
     recording_folder_current=None
     recording_frame_number = 0
+    server_socket=None
 
-    if pipe is None:
+    if queue is None:
         log.info('opening UDP port {} to receive frames from producer'.format(PORT))
         server_socket: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -140,10 +143,10 @@ def consumer(pipe:Pipe):
                 print(f'unknown key {k}')
 
             with Timer('receive voxels'):
-                if pipe:
+                if queue:
                     # log.debug('receiving entire voxel volume on pipe')
-                    if pipe.poll(timeout=1):
-                        (voxel_five_float32, frame_number, time_last_frame_sent) = pipe.recv()
+                    try:
+                        (voxel_five_float32, frame_number, time_last_frame_sent) = queue.get(block=True, timeout=1)
                         dropped_frames = frame_number - last_frame_number - 1
                         if dropped_frames > 0:
                             log.warning(
@@ -152,7 +155,13 @@ def consumer(pipe:Pipe):
                         else:
                             frames_without_drop += 1
                         last_frame_number = frame_number
-                    else:
+                        time_now = time.time()
+                        delta_time = time_now - time_last_frame_sent
+                        # print(delta_time)
+                        if delta_time > .3:
+                            log.warning(
+                                f'time since this frame was sent ({eng(delta_time)}s) is longer than .3s; consider increasing producer FRAME_DURATION_US which is currently {FRAME_DURATION_US}us')
+                    except Empty:
                         image=np.zeros(args.sensor_resolution,dtype=np.uint8)
                         show_frame(image, 'polarization', cv2_resized)
                         continue
