@@ -35,7 +35,7 @@ From terminal
   workon pdavis_demo
   pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
   ```
-* install libcear. Building pyaer (below) will probably also require building [https://gitlab.com/inivation/dv/libcaer/-/tree/master/](libcaer) from source using a particular checkpoint as shown below.
+* install libcear. Building pyaer (below) will probably also require building [libcaer](https://gitlab.com/inivation/dv/libcaer/-/tree/master/) from source using a particular checkpoint as shown below.
   ```
   sudo apt-get update
   sudo apt-get install build-essential pkg-config libusb-1.0-0-dev
@@ -47,7 +47,7 @@ From terminal
   make -j
   sudo make install
   ```
-* Build [https://github.com/duguyue100/pyaer/blob/master/INSTALL_FROM_SOURCE.md](pyaer) from source (needed because pyaer master is broken at this time). 
+* Build [pyaer](https://github.com/duguyue100/pyaer/blob/master/INSTALL_FROM_SOURCE.md)from source (needed because pyaer master is broken at this time). 
 
 * install other dependencies
   ```
