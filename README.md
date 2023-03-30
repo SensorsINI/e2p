@@ -16,7 +16,9 @@ that outputs both conventional polarization frames and asynchronous,
 continuously per-pixel polarization brightness changes (polarization events) 
 with **_fast temporal resolution_** and **_large dynamic range_**.
 
-This project enables live demonstration of the E2P PDAVIS as illustrated below and training new and improved E2P networks; see [train](train) for training
+This project enables live demonstration of the E2P PDAVIS as illustrated below.
+
+See subfolder [train](train) for training new and improved E2P DNNs.
 
 ![pdavis_demo_screen_230327.png](media%2Fpdavis_demo_screen_230327.png)
 
@@ -24,7 +26,7 @@ This project enables live demonstration of the E2P PDAVIS as illustrated below a
 ### 2. Requirements
 #### 2.1. Ubuntu
 From terminal
-* create virtual environement. 
+* create virtual environement.  (Here we use virtualenv, but conda env works fine too.)
   ```
   mkvirtualenv pdavis_demo
   ```
@@ -33,21 +35,20 @@ From terminal
   workon pdavis_demo
   pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 torchaudio==0.11.0 --extra-index-url https://download.pytorch.org/whl/cu113
   ```
-* install libcear
+* install libcear. Building pyaer (below) will probably also require building [https://gitlab.com/inivation/dv/libcaer/-/tree/master/](libcaer) from source using a particular checkpoint as shown below.
   ```
   sudo apt-get update
   sudo apt-get install build-essential pkg-config libusb-1.0-0-dev
   git clone https://gitlab.com/inivation/dv/libcaer.git
   cd libcaer
-  git checkout e68c3b4c115f59d5fd030fd44db12c702dddc3a5
+  git checkout e68c3b4c115f59d5fd030fd44db12c702dddc3a5 # note you need this particular version
   sudo apt install cmake
   cmake -DCMAKE_INSTALL_PREFIX=/usr .
   make -j
   sudo make install
   ```
-* build pyaer (needed because pyaer master is broken at this time)
- 
-See 
+* Build [https://github.com/duguyue100/pyaer/blob/master/INSTALL_FROM_SOURCE.md](pyaer) from source (needed because pyaer master is broken at this time). 
+
 * install other dependencies
   ```
   pip install -r requirements.txt
@@ -57,7 +58,7 @@ See
 
 We successfully run the PDAVIS demo on Windows 11 inside a WSL2 virtual Ubuntu 22 using [usbipd](https://github.com/dorssel/usbipd-win) to map the PDAVIS to WSL2.
 * We use the handy Windows utility [wsl-usb-gui](https://gitlab.com/alelec/wsl-usb-gui) to control usbipd 
-* We use the great Windows X server VcXsrv to develop with pycharm and display the demo output to the Windows 11 desktop.
+* We use the great Windows X server [https://sourceforge.net/projects/vcxsrv/](VcXsrv) to develop with pycharm and display the demo output to the Windows 11 desktop.
 * VcXsrv needs to be set to disable access control
 
 ### 3. Run
@@ -114,12 +115,61 @@ The output files are automatically saved at the following location:
 
 If you find this project useful, please consider citing:
 
-    @inproceedings{gruev2022division,
-      title={Division of focal plane asynchronous polarization imager},
-      author={Gruev, Viktor and Haessig, Germain and Joubert, Damien and Haque, Justin and Chen, Yingkai and Milde, Moritz and Delbruck, Tobi},
-      booktitle={Polarization: Measurement, Analysis, and Remote Sensing XV},
-      year={2022},
-      organization={SPIE}
+    @INPROCEEDINGS{Delbruck2023-e2p-demo,
+      title           = "Live Demo: {E2P--Events} to Polarization Reconstruction
+                         from {PDAVIS} Events",
+      booktitle       = "{CVPRW} Workshop on Event Based Vision",
+      author          = "Delbruck, Tobi and Wang, Zuowen and Mei, Haiyang and
+                         Haessig, Germain and Joubert, Damien and Haque, Justin and
+                         Chen, Yingkai and Milde, Moritz B and Gruev, Viktor",
+      publisher       = "IEEE",
+      pages           = "(accepted)",
+      year            =  2023,
+      location        = "Vancouver"
+    }
+
+    @INPROCEEDINGS{Meil2023-e2p-cvpr,
+      title           = "Deep Polarization Reconstruction with {PDAVIS} Events",
+      booktitle       = "{CVPR}",
+      author          = "Meil, Haiyang and Wang, Zuowen and Yang, Xin and Wei,
+                         Xiaopeng and Delbruck, Tobi",
+      publisher       = "IEEE",
+      pages           = "(accepted)",
+      year            =  2023,
+      location        = "Vancouver"
+    }
+
+    @INPROCEEDINGS{Gruev2022-pdavis-abs-spie,
+      title      = "Division of focal plane asynchronous polarization imager",
+      booktitle  = "Polarization: Measurement, Analysis, and Remote Sensing {XV}",
+      author     = "Gruev, Viktor and Haessig, Germain and Joubert, Damien and
+                    Haque, Justin and Chen, Yingkai and Milde, Moritz and Delbruck,
+                    Tobi",
+      publisher  = "SPIE",
+      volume     =  12112,
+      pages      = "1211208",
+      month      =  may,
+      year       =  2022,
+      url        = "https://www.spiedigitallibrary.org/conference-proceedings-of-spie/12112/0000/Division-of-focal-plane-asynchronous-polarization-imager/10.1117/12.2626048.short",
+      keywords   = "event based camera; polarization camera; asynchronous
+                    polarization camera;",
+      language   = "en",
+      conference = "Polarization: Measurement, Analysis, and Remote Sensing XV",
+      doi        = "10.1117/12.2626048"
+    }
+    
+    @ARTICLE{Haessig2021-pdavis-arxiv,
+      title         = "Bio-inspired Polarization Event Camera",
+      author        = "Haessig, Germain and Joubert, Damien and Haque, Justin and
+                       Chen, Yingkai and Milde, Moritz and Delbruck, Tobi and
+                       Gruev, Viktor",
+      month         =  dec,
+      year          =  2021,
+      url           = "http://arxiv.org/abs/2112.01933",
+      archivePrefix = "arXiv",
+      eprint        = "2112.01933",
+      primaryClass  = "cs.CV",
+      arxivid       = "2112.01933"
     }
 
 ### 6. Contact
