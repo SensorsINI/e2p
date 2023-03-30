@@ -1,5 +1,10 @@
 ## Implementation of Events to Polarizartion (E2P) PDAVIS Live Demo
 
+
+https://user-images.githubusercontent.com/10061874/228910229-a163526a-dd55-40b0-8280-3182e2292c07.mp4
+
+The subject is holding a set of 3 linear polarization filters. The E2P output is the reconstructed intensity, angle, and degree of linear polarization.
+
 - [Table of Contents](#implementation-of-pdavis-Live-demo)
   * [1. Introduction](#1-introduction)
   * [2. Requirements](#2-requirements)
@@ -19,8 +24,6 @@ with **_fast temporal resolution_** and **_large dynamic range_**.
 This project enables live demonstration of the E2P PDAVIS as illustrated below.
 
 See subfolder [train](train) for training new and improved E2P DNNs.
-
-![pdavis_demo_screen_230327.png](media%2Fpdavis_demo_screen_230327.png)
 
 
 ### 2. Requirements
