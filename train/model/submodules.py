@@ -2480,7 +2480,7 @@ class JRLFB_more(nn.Module):
         super(JRLFB_more, self).__init__()
 
         if out_channels is None:
-            out_channels = in_channels
+            out_channels = i/home/tobi/e2p/train/utils/parse_config.pyn_channels
 
         self.n_layer = n_layer
         self.coupled_feat_extractor = nn.ModuleList([Coupled_Layer() for i in range(self.n_layer)])

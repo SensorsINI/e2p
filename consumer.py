@@ -13,7 +13,6 @@ import argparse
 import pickle
 from queue import Empty
 
-import cv2
 import socket
 
 from thop import profile, clever_format
@@ -23,7 +22,7 @@ from globals_and_utils import *
 from pathlib import Path
 
 import torch
-from utils.util import torch2cv2, torch2numpy, numpy2cv2
+from train.utils.util import torch2cv2, torch2numpy, numpy2cv2
 from easygui import fileopenbox
 from utils.prefs import MyPreferences
 prefs=MyPreferences()
@@ -38,9 +37,9 @@ except Exception as e:
 
 # from inference.py
 import e2p as model_arch
-from utils.henri_compatible import make_henri_compatible
-from parse_config import ConfigParser
-from multiprocessing import  Pipe,Queue
+from train.utils.henri_compatible import make_henri_compatible
+from train.parse_config import ConfigParser
+from multiprocessing import Queue
 
 
 
@@ -85,7 +84,6 @@ def consumer(queue:Queue):
         :param frame: 2D array of RGB values uint8 [y,x,RGB]
         :param name: string name for window
         :param resized_dict: dict to hold this frame for resizing operations
-        :param text: text to add at LL corner
         """
         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
         cv2.imshow(name, frame)

@@ -37,11 +37,17 @@ def binary_search_h5_timestamp(hdf_path, l, r, x, side='left'):
 def binary_search_torch_tensor(t, l, r, x, side='left'):
     """
     Binary search sorted pytorch tensor
+    :param t: the 1d array to serch
+    :param l: where to start
+    :param r: where to end
+    :param x: target for search
+    :param side: whether to return 'left' or right (any other value of argument) value of index
+    :returns: index of found location
     """
     if r is None:
         r = len(t)-1
     while l <= r:
-        mid = l + (r - l)//2;
+        mid = l + (r - l)//2
         midval = t[mid]
         if midval == x:
             return mid
@@ -332,11 +338,11 @@ def events_to_image_torch(xs, ys, ps,
         interpolation=None, padding=True):
     """
     Method to turn event tensor to image. Allows for bilinear interpolation.
-        :param xs: tensor of x coords of events
-        :param ys: tensor of y coords of events
-        :param ps: tensor of event polarities/weights
-        :param device: the device on which the image is. If none, set to events device
-        :param sensor_size: the size of the image sensor/output image
+        :param xs: tensor of x coords of events.
+        :param ys: tensor of y coords of events.
+        :param ps: tensor of event polarities/weights.
+        :param device: the device on which the image is. If none, set to events device.
+        :param sensor_size: the size of the image sensor/output image as int tuple (height, width).
         :param clip_out_of_range: if the events go beyond the desired image size,
             clip the events to fit into the image
         :param interpolation: which interpolation to use. Options=None,'bilinear'
@@ -463,24 +469,24 @@ def events_to_voxel_timesync_torch(xs, ys, ts, ps, B, t0, t1, device=None, np_ts
         temporal_bilinear=temporal_bilinear)
     return voxel
 
-def events_to_voxel_torch(xs, ys, ts, ps, B, device=None, sensor_size=(180, 240), temporal_bilinear=True):
+def events_to_voxel_torch(xs, ys, ts, ps, B, device=None, sensor_size=(260, 346), temporal_bilinear=True):
     """
     Turn set of events to a voxel grid tensor, using temporal bilinear interpolation
     Parameters
     ----------
-    xs : list of event x coordinates (torch tensor)
-    ys : list of event y coordinates (torch tensor)
-    ts : list of event timestamps (torch tensor)
-    ps : list of event polarities (torch tensor)
-    B : number of bins in output voxel grids (int)
-    device : device to put voxel grid. If left empty, same device as events
-    sensor_size : the size of the event sensor/output voxels
-    temporal_bilinear : whether the events should be naively
-        accumulated to the voxels (faster), or properly
-        temporally distributed
+    xs : list of event x coordinates (torch tensor).
+    ys : list of event y coordinates (torch tensor).
+    ts : list of event timestamps in seconds (torch tensor).
+    ps : list of event polarities from values (-1,+1) for  OFF/ON events (torch tensor).
+    B : number of bins in output voxel grids (int).
+    device : device to put voxel grid. If left empty, same device as events.
+    sensor_size : the size of the event sensor/output voxels as int tuple (height, width).
+    temporal_bilinear : whether the events are properly
+        temporally distributed (True), or are naively
+        accumulated to the voxels (faster) (False).
     Returns
     -------
-    voxel: voxel of the events between t0 and t1
+    voxel: voxel of the events between t0 and t1. Dimensions are [bin,y,x]
     """
     if device is None:
         device = xs.device
@@ -497,7 +503,7 @@ def events_to_voxel_torch(xs, ys, ts, ps, B, device=None, sensor_size=(180, 240)
                     weights, device, sensor_size=sensor_size,
                     clip_out_of_range=False)
         else:
-            tstart = t[0] + dt * bi
+            tstart = ts[0] + dt * bi
             tend = tstart + dt
             beg = binary_search_torch_tensor(t, 0, len(ts)-1, tstart)
             end = binary_search_torch_tensor(t, 0, len(ts)-1, tend)

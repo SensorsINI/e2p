@@ -1,4 +1,4 @@
-from utils.default_config import default_config
+from train.utils.default_config import default_config
 import copy
 from parse_config import ConfigParser
 
