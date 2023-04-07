@@ -71,6 +71,7 @@ def producer(queue:Queue):
     paused=False
 
     # open davis camera, set biases
+    log.info('opening PDAVIS camera')
     device = DAVIS(noise_filter=True)
     def cleanup():
         log.info('closing {}'.format(device))
@@ -210,8 +211,9 @@ def producer(queue:Queue):
                     if queue:
                         voxel_4d=np.expand_dims(voxel.numpy(),0) # need to expand to 4d for input to DNN
                         # log.debug(f'sending entire voxel volume on pipe with shape={voxel_4d.shape}')
-                        if not queue.empty():
+                        if not queue.empty() and warning_counter < WARNING_INTERVAL or warning_counter % WARNING_INTERVAL == 0:
                             log.warning('queue is full, cannot send voxel volume')
+                            warning_counter+=1
                         else:
                             frame_number+=1
                             time_last_frame_sent=time.time()

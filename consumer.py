@@ -97,7 +97,7 @@ def consumer(queue:Queue):
     last_frame_number = 0
     voxel_five_float32 = None
     c = 0
-    print_key_help()
+    print_key_help(args)
     frames_without_drop = 0
     reset_e2p_state(args,model)
 
@@ -110,7 +110,7 @@ def consumer(queue:Queue):
                 print('quitting....')
                 break
             elif k == ord('h') or k == ord('?'):
-                print_key_help()
+                print_key_help(args)
             elif k == ord('p'):
                 print_timing_info()
             elif k == ord('-'):
@@ -137,7 +137,7 @@ def consumer(queue:Queue):
                     recording_activated = False
                     log.info(f'stopped recording to folder {recording_folder_current}')
             elif k != 255:
-                print_key_help()
+                print_key_help(args)
                 print(f'unknown key {k}')
 
             with Timer('receive voxels'):
@@ -197,11 +197,19 @@ def consumer(queue:Queue):
                         intensity, aolp, dolp, aolp_mask = compute_firenet_output(model,input, states)
 
                 with Timer('show output frame'):
+                    if queue: # make DVS frame to show from float of last voxel frame
+                        frame_255=(255*((voxel_five_float32[0,-1,:,:].squeeze())+1)/2).astype(np.uint8)
+                        pass
+
+                    dvs = cv2.cvtColor(frame_255[::2,::2],cv2.COLOR_GRAY2RGB)
+                    # dvs = np.repeat(frame_255[::2,::2], 3, axis=1).astype(np.uint8)  # need to dup channels and reduce res to display together
+
+                    mycv2_put_text(dvs, 'DVS')
                     mycv2_put_text(intensity, 'intensity')
                     mycv2_put_text(aolp, 'AoLP')
                     mycv2_put_text(dolp, 'DoLP')
 
-                    image = cv2.hconcat([intensity, aolp, dolp])
+                    image = cv2.hconcat([dvs,intensity, aolp, dolp])
                     show_frame(image, 'polarization', cv2_resized)
                     if recording_activated:
                         recording_frame_number = write_next_image(recording_folder_current, recording_frame_number, image)
@@ -235,14 +243,14 @@ def get_timestr():
     timestr = time.strftime("%Y%m%d-%H%M%S")
     return timestr
 
-def print_key_help():
+def print_key_help(args):
     """Print keyboard help."""
     print(f'producer keys to use in cv2 image window:\n'
           '- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
           'h or ?: print this help\n'
           'p: print timing info\n'
           'r: toggle recording on/off; see console output for timestamped output folder\n'
-          'e: reset E2P hidden state; it is currently reset every {args.reset_period} frames by --reset_period argument\n'
+          f'e: reset E2P hidden state; it is currently reset every {args.reset_period} frames by --reset_period argument\n'
           'space: toggle pause\n'
           # 'm: toggle between e2p and firenet models\n'
           'q or x: exit')

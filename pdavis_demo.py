@@ -28,17 +28,19 @@ def main():
     mp.set_start_method('spawn') # https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
     queue=Queue()
     # parent_conn, child_conn = Pipe() # half duplex, only send and recieve on other side
-    log.debug('starting PDAVIS demo consumer and producer processes')
+    log.debug('starting PDAVIS demo consumer process')
     con = Process(target=consumer, args=(queue,),name='consumer')
     con.start()
     time.sleep(8) # give some time to load E2P
+    log.debug('starting PDAVIS demo producer process')
     pro = Process(target=producer, args=(queue,),name='producer')
     pro.start()
-    log.debug('waiting for consumer and producer processes to join')
     if kbAvailable:
         print_help()
     while True:
+        # log.debug('waiting for consumer and producer processes to join')
         if kbAvailable and kb.kbhit():
+            print('.',end='')
             ch = kb.getch()
             if ch == 'h' or ch == '?':
                 print_help()
@@ -47,11 +49,15 @@ def main():
                 pro.terminate()
                 con.terminate()
                 break
+        if not con.is_alive() and not pro.is_alive():
+            log.info('producer and consumer processes both dead, terminating loop')
+            break
         time.sleep(.3)
+    log.debug('joining producer and consumer processes')
     pro.join()
     con.join()
     log.debug('both consumer and producer processes have joined, done')
-    quit(0)
+    # quit(0)
 
 if __name__ == '__main__':
     main()
