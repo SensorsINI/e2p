@@ -4,7 +4,7 @@ import numpy as np
 from os.path import join
 
 from .model import model as model_arch
-from .utils.parse_config import ConfigParser
+from train.parse_config import ConfigParser
 
 
 def load_model(args, checkpoint):

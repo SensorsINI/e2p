@@ -42,6 +42,8 @@ from train.utils.henri_compatible import make_henri_compatible
 from train.parse_config import ConfigParser
 from multiprocessing import Queue
 
+sys.path.append('train') # needed to get model to load using torch.load with train.parse_config ConfigParser.. don't understand why
+
 
 
 def consumer(queue:Queue):
@@ -401,6 +403,8 @@ def load_selected_model(args, device):
         if not p.is_file():
             raise FileNotFoundError(f'model --checkpoint_path={args.checkpoint_path} does not exist. Maybe you used single quote in args? Use double quote.')
         log.info(f'loading checkpoint model path from {checkpoint_path} with torch.load()')
+        from train.parse_config import ConfigParser
+        import parse_config
         checkpoint = torch.load(checkpoint_path)
         # args, checkpoint = legacy_compatibility(args, checkpoint)
         model = load_e2p_model(checkpoint,device)
