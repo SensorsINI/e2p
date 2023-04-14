@@ -20,7 +20,7 @@ import model.loss as module_loss
 # import model.model_mhy as module_arch
 import model.model_v as module_arch
 # import model.model_ed as module_arch
-from parse_config import ConfigParser
+from train.parse_config import ConfigParser
 from trainer import Trainer, Trainer_P, Trainer_S, Trainer_I, Trainer_RP
 
 # fix random seeds for reproducibility

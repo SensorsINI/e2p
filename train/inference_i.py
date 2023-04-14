@@ -42,7 +42,7 @@ from utils.util import CropParameters, get_height_width, torch2cv2, \
 from utils.timers import CudaTimer
 from utils.henri_compatible import make_henri_compatible
 
-from parse_config import ConfigParser
+from train.parse_config import ConfigParser
 
 model_info = {}
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

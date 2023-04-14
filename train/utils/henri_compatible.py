@@ -1,6 +1,6 @@
 from train.utils.default_config import default_config
 import copy
-from parse_config import ConfigParser
+from train.parse_config import ConfigParser
 
 
 def make_henri_compatible(checkpoint, final_activation=''):

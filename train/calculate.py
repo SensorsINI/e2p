@@ -13,7 +13,7 @@ import argparse
 import collections
 from thop import profile
 from thop import clever_format
-from parse_config import ConfigParser
+from train.parse_config import ConfigParser
 
 # import model.model as module_arch
 import model.model_mhy as module_arch

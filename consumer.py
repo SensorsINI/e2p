@@ -15,6 +15,7 @@ from queue import Empty
 
 import socket
 
+import cv2
 from thop import profile, clever_format
 
 from globals_and_utils import *
@@ -88,7 +89,7 @@ def consumer(queue:Queue):
         cv2.namedWindow(name, cv2.WINDOW_NORMAL)
         cv2.imshow(name, frame)
         if not (name in resized_dict):
-            cv2.resizeWindow(name, 1800, 600)
+            cv2.resizeWindow(name, 800, 600)
             resized_dict[name] = True
             # wait minimally since interp takes time anyhow
             cv2.waitKey(1)
@@ -209,7 +210,7 @@ def consumer(queue:Queue):
                     mycv2_put_text(aolp, 'AoLP')
                     mycv2_put_text(dolp, 'DoLP')
 
-                    image = cv2.hconcat([dvs,intensity, aolp, dolp])
+                    image = cv2.vconcat([cv2.hconcat([dvs,intensity]),cv2.hconcat([aolp, dolp])])
                     show_frame(image, 'polarization', cv2_resized)
                     if recording_activated:
                         recording_frame_number = write_next_image(recording_folder_current, recording_frame_number, image)
