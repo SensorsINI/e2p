@@ -16,6 +16,7 @@ from queue import Empty
 import socket
 
 import cv2
+import numpy as np
 from thop import profile, clever_format
 
 from globals_and_utils import *
@@ -23,6 +24,8 @@ from globals_and_utils import *
 from pathlib import Path
 
 import torch
+
+from train.events_contrast_maximization.utils.event_utils import events_to_voxel_torch
 from train.utils.util import torch2cv2, torch2numpy, numpy2cv2
 from easygui import fileopenbox
 from utils.prefs import MyPreferences
@@ -55,6 +58,12 @@ def consumer(queue:Queue):
 
     states = None  # firenet states, to feed back into firenet
     model = None
+
+    playback_file=None # used to play back recording from producer
+    playback_events=None # the events we will play back, totally loaded into RAM from numpy recording
+    playback_current_time=0.0
+    playback_timestamps=None # the timestamps alone, for searching current frame
+    playback_frame_duration=FRAME_DURATION_US*1e-6
 
     recording_folder_base = args.recording_folder
     recording_folder_current=None
@@ -139,12 +148,68 @@ def consumer(queue:Queue):
                 else:
                     recording_activated = False
                     log.info(f'stopped recording to folder {recording_folder_current}')
+            elif k==ord('o'):
+                if playback_file:
+                    log.info(f'closing playback file {playback_file}')
+                    playback_file=None
+                    playback_events=None
+                    playback_timestamps=None
+                else:
+                    last_playback_file = prefs.get('last_playback_file', RECORDING_FOLDER)
+                    playback_file = fileopenbox(msg='select numpy recording', title='Select recording', default=last_playback_file,
+                                    filetypes=['*.npy'])
+                    if playback_file is not None:
+                        prefs.put('last_playback_file', playback_file)
+                        try:
+                            playback_events=np.load(playback_file)
+                            playback_timestamps=playback_events[:,0]*1e-6 # make time in seconds
+                            playback_current_time=playback_timestamps[0]
+                            reset_e2p_state(args, model)
+                            log.info(f'playing {playback_events.shape} events with duration {(playback_timestamps[-1]-playback_timestamps[0]):.3f}s from {playback_file}')
+                        except Exception as e:
+                            log.error(f'could not load events from {playback_file}: got {str(e)}')
+                            playback_file=None
+                    else:
+                        log.warning('no file selected')
+            elif k==ord('s'):
+                playback_frame_duration/=np.sqrt(2)
+                print(f'frame slowed down to {playback_frame_duration*1e3:.2f}ms frames')
+            elif k==ord('f'):
+                playback_frame_duration*=np.sqrt(2)
+                print(f'frame sped up to {playback_frame_duration*1e3:.2f}ms frames')
+
+
             elif k != 255:
                 print_key_help(args)
                 print(f'unknown key {k}')
 
             with Timer('receive voxels'):
-                if queue:
+                if playback_file:
+                    playback_next_time=playback_current_time+playback_frame_duration
+
+                    idx_start=np.searchsorted(playback_timestamps,playback_current_time)
+                    idx_end=np.searchsorted(playback_timestamps,playback_next_time)
+                    events=playback_events[idx_start:idx_end,:]
+                    playback_current_time=playback_next_time
+                    if playback_current_time>playback_timestamps[-1]:
+                        playback_current_time=playback_timestamps[0]
+                        reset_e2p_state(args, model)
+                        log.info('rewound to start, reset network')
+                        continue
+                    if len(events)==0:
+                        log.info('no events')
+                        continue
+                    xs = torch.from_numpy(events[:, 1].astype(np.float32))  # event x addreses
+                    ys = torch.from_numpy(events[:, 2].astype(np.float32))  # event y addresses
+                    ts = torch.from_numpy(
+                        (events[:, 0] - events[0, 0]).astype(np.float32))  # event relative timesamps in us
+                    ps = torch.from_numpy((events[:, 3] * 2 - 1).astype(
+                        np.float32))  # change polarity from 0,1 to -1,+1 so that polarities are signed
+                    voxel = events_to_voxel_torch(xs, ys, ts, ps, NUM_BINS, sensor_size=SENSOR_RESOLUTION,temporal_bilinear=True)
+                    voxel = voxel[:, 0:args.sensor_resolution[0], 0:args.sensor_resolution[1]]  # crop out UL corner from entire voxel frame to limit to max possible UDP packet size
+                    voxel_five_float32 = np.expand_dims(voxel.numpy(), 0)  # need to expand to 4d for input to DNN
+
+                elif queue:
                     # log.debug('receiving entire voxel volume on pipe')
                     try:
                         (voxel_five_float32, frame_number, time_last_frame_sent) = queue.get(block=True, timeout=1)
@@ -207,7 +272,10 @@ def consumer(queue:Queue):
                     dvs = cv2.cvtColor(frame_255[::2,::2],cv2.COLOR_GRAY2RGB)
                     # dvs = np.repeat(frame_255[::2,::2], 3, axis=1).astype(np.uint8)  # need to dup channels and reduce res to display together
 
-                    mycv2_put_text(dvs, 'DVS')
+                    if playback_file:
+                        mycv2_put_text(dvs, f'DVS {playback_frame_duration*1e3:.1f}ms@{playback_current_time:.2f}s')
+                    else:
+                        mycv2_put_text(dvs, 'DVS')
                     mycv2_put_text(intensity, 'intensity')
                     mycv2_put_text(aolp, 'AoLP')
                     mycv2_put_text(dolp, 'DoLP')
@@ -248,15 +316,17 @@ def get_timestr():
 
 def print_key_help(args):
     """Print keyboard help."""
-    print(f'producer keys to use in cv2 image window:\n'
+    print(f'**********************\nproducer keys to use in cv2 image window:\n'
           '- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
           'h or ?: print this help\n'
           'p: print timing info\n'
+          'o: open recording numpy file to play back\n'
+          's or f: slow down (briefer frames) or speed up (longer frames) playback'
           'r: toggle recording on/off; see console output for timestamped output folder\n'
           f'e: reset E2P hidden state; it is currently reset every {args.reset_period} frames by --reset_period argument\n'
           'space: toggle pause\n'
           # 'm: toggle between e2p and firenet models\n'
-          'q or x: exit')
+          'q or x: exit\n*****************************')
 
 
 def legacy_compatibility(args, checkpoint):

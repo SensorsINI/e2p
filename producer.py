@@ -37,6 +37,8 @@ from pyaer.davis import DAVIS
 from pyaer import libcaer
 
 from utils.get_logger import get_logger
+import desktop # tobi's patch to support xdg-open https://github.com/eight04/pyDesktop3/issues/5 never pulled, using local copy of desktop package developed for v2e project
+
 log=get_logger(__name__)
 
 # from events_contrast_maximization.utils.event_utils import events_to_voxel_torch  # WARNING: this function is not the same one used for e2p training
@@ -62,7 +64,7 @@ def producer(queue:Queue):
     flex_time_mode=args.flex_time_mode
     frame_duration_ms=args.frame_duration_ms
     frame_count_k_events=args.frame_count_k_events
-    save_numpy_images=args.numpy
+    save_numpy=args.save_numpy
     num_bins=args.num_bins
     sensor_resolution=args.sensor_resolution
 
@@ -79,6 +81,7 @@ def producer(queue:Queue):
         cv2.destroyAllWindows()
         if recording_folder_base is not None and recording_frame_number>0:
             log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder_base}')
+            desktop.open(recording_folder_base)
     atexit.register(cleanup)
 
     print("DVS USB ID:", device.device_id)
@@ -166,7 +169,7 @@ def producer(queue:Queue):
                         pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
                         if num_pol_event>0:
                             if events is None:
-                                events=pol_events # events[:,x] where for x 0 is time, 1 and 2 are x and y, 3rd is polarity (OFF,ON)=(0,1) values
+                                events=pol_events # events[:,x] where for x 0 is time, 1 and 2 are x and y, 3 is polarity (OFF,ON)=(0,1) values, 4 is filtered status when noise filtering enabled
                             else:
                                 events = np.vstack([events, pol_events]) # otherwise tack new events to end
                         time.sleep(0.001) # yield
@@ -184,11 +187,12 @@ def producer(queue:Queue):
                     if warning_counter<WARNING_INTERVAL or warning_counter%WARNING_INTERVAL==0:
                         warning_counter+=1
                         log.warning(f'after dropping {frames_dropped_counter} frames, got one after {dtMs:.1f}ms')
-                if save_numpy_images:
+                if save_numpy:
                     if saved_events is None:
                         saved_events = pol_events
                     else:
                         saved_events.append(events)
+                        print('.',end='')
                         # saved_events = np.vstack([saved_events, events])
                         # if psutil.virtual_memory().available < 1e9:
                         #     log.warning('available RAM too low, turning off numpy data saving')
@@ -303,7 +307,9 @@ def producer(queue:Queue):
                                 else:
                                     recording_activated=False
                                     log.info(f'stopped recording to folder {recording_folder_current}')
-
+                            elif k==ord('l'): # numpy file of events saved at the end
+                                save_numpy= not save_numpy
+                                log.info(f'save_numpy={save_numpy}')
                             elif k==ord(' '):
                                 paused=not paused
                                 print(f'paused={paused}')
@@ -330,6 +336,7 @@ def producer(queue:Queue):
             data_path=os.path.join(recording_folder_base,f'events-{get_timestr()}.npy')
             log.info(f'saving {eng(nevents)} events to {data_path}')
             np.save(data_path,o)
+            desktop.open(data_path)
     except KeyboardInterrupt as e:
         log.info(f'got KeyboardInterrupt {e}')
         cleanup()
@@ -361,7 +368,8 @@ def print_key_help():
           'p: print timing info\n'
           't: toggle flex time (constant-duration / constant-count frames)\n'
           'f or s: faster or slower frames (less duration or count vs more)'
-          'space: toggle or turn on while space down recording\n'
+          'r: toggle recording PNG frames\n'
+          'l: toggle saving events to write numpy file at the end\n'
           'q or x or ESC: exit')
 
 def get_args():
@@ -372,7 +380,7 @@ def get_args():
     parser.add_argument("--frame_count_k_events", type=int, default=FRAME_COUNT_EVENTS/1000, help="duration of frame exposure per total voxel volume")
     parser.add_argument("--num_bins", type=int, default=NUM_BINS, help="number of bins for event voxel")
     parser.add_argument("--sensor_resolution", type=tuple, default=SENSOR_RESOLUTION, help="sensor resolution as tuple (height, width)")
-    parser.add_argument("--numpy", action='store_true', default=False, help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")
+    parser.add_argument("--save_numpy", action='store_true', default=False, help="saves raw AE data to RAM and writes as numpy at the end (will gobble RAM like crazy)")
     parser.add_argument('--e2p', action='store_true', default=True, help='set required parameters to run events to polarity e2p DNN')
     parser.add_argument('--e2vid', action='store_true', default=False, help='set required parameters to run original e2vid as described in Rebecq20PAMI for polariziation reconstruction')
     parser.add_argument('--firenet_legacy', action='store_true', default=False, help='set required parameters to run legacy firenet as described in Scheerlinck20WACV (not for retrained models using updated code)')
