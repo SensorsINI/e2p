@@ -68,10 +68,11 @@ We successfully run the PDAVIS demo on Windows 11 inside a WSL2 virtual Ubuntu 2
  2. Connect hardware: PDAVIS to USB.
 
 #### Using a single command to launch producer and consumer processes using python multiprocessing
-In a terminal``` run
+In a terminal at root of project run
 ```bash
 python -m pdavis_demo
 ```
+Once the demo is running, you can control it via keystroke commands in the terminal windows and the separate DVS (producer) and reconstruction (consumer) windows. Type 'h' in the window to see help printed to terminal for available commands.
 
 #### Using two terminals to run the producer (DAVIS) and consumer (E2P) processes
 
