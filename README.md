@@ -87,14 +87,16 @@ python -m pdavis_demo
 ### 4. Results
 
 <p align="center">
-    <img src="demo.png"/> <br />
+    <img src="media/pdavis_camera.png" style="width: 25vw; min-width: 200px;"/>
+    </br>
+   <img src="media/PDAVIS_E2P_demo.png" style="width: 70vw; min-width: 200px;"/> <br />
     <em> 
-    Figure 1: PDAVIS live demo: (left) raw polarization events and (right) polarization reconstruction results.
+    Figure 1: PDAVIS live demo: (top) PDAVIS camera and (bottom) polarization reconstruction results.
     </em>
 </p>
 
 #### 4.1. Saving Directory
-The output files are automatically saved at the following location:
+The output files are automatically saved at the location specified by the variable _RECORDING_FOLDER_ in [globals_and_utils.py](globals_and_utils.py):
 
 	./output
 	├── xxx
