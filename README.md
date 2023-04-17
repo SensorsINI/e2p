@@ -68,10 +68,11 @@ We successfully run the PDAVIS demo on Windows 11 inside a WSL2 virtual Ubuntu 2
  2. Connect hardware: PDAVIS to USB.
 
 #### Using a single command to launch producer and consumer processes using python multiprocessing
-In a terminal``` run
+In a terminal at root of project run
 ```bash
 python -m pdavis_demo
 ```
+Once the demo is running, you can control it via keystroke commands in the terminal windows and the separate DVS (producer) and reconstruction (consumer) windows. Type 'h' in the window to see help printed to terminal for available commands.
 
 #### Using two terminals to run the producer (DAVIS) and consumer (E2P) processes
 
@@ -119,6 +120,24 @@ The output files are automatically saved at the location specified by the variab
 
 If you find this project useful, please consider citing:
 
+    
+	@INPROCEEDINGS{Gruev2022-pdavis-cvprw,
+	  title           = "{PDAVIS}: Division of focal plane asynchronous
+			     polarization imager",
+	  booktitle       = "{CVPRW} Workshop on Event Based Vision",
+	  author          = "Gruev, Viktor and Haessig, Germain and Joubert, Damien and
+			     Haque, Justin and Milde, Moritz and Delbruck, Tobi",
+	  publisher       = "IEEE",
+	  pages           = "(accepted)",
+	  year            =  2023,
+	  url             = "https://tub-rip.github.io/eventvision2023/",
+	  keywords        = "event based camera; polarization camera; asynchronous
+			     polarization camera;",
+	  language        = "en",
+	  conference      = "Polarization: Measurement, Analysis, and Remote Sensing XV",
+	  location        = "Vancouver"
+	}
+
     @INPROCEEDINGS{Delbruck2023-e2p-demo,
       title           = "Live Demo: {E2P--Events} to Polarization Reconstruction
                          from {PDAVIS} Events",
@@ -141,39 +160,6 @@ If you find this project useful, please consider citing:
       pages           = "(accepted)",
       year            =  2023,
       location        = "Vancouver"
-    }
-
-    @INPROCEEDINGS{Gruev2022-pdavis-abs-spie,
-      title      = "Division of focal plane asynchronous polarization imager",
-      booktitle  = "Polarization: Measurement, Analysis, and Remote Sensing {XV}",
-      author     = "Gruev, Viktor and Haessig, Germain and Joubert, Damien and
-                    Haque, Justin and Chen, Yingkai and Milde, Moritz and Delbruck,
-                    Tobi",
-      publisher  = "SPIE",
-      volume     =  12112,
-      pages      = "1211208",
-      month      =  may,
-      year       =  2022,
-      url        = "https://www.spiedigitallibrary.org/conference-proceedings-of-spie/12112/0000/Division-of-focal-plane-asynchronous-polarization-imager/10.1117/12.2626048.short",
-      keywords   = "event based camera; polarization camera; asynchronous
-                    polarization camera;",
-      language   = "en",
-      conference = "Polarization: Measurement, Analysis, and Remote Sensing XV",
-      doi        = "10.1117/12.2626048"
-    }
-    
-    @ARTICLE{Haessig2021-pdavis-arxiv,
-      title         = "Bio-inspired Polarization Event Camera",
-      author        = "Haessig, Germain and Joubert, Damien and Haque, Justin and
-                       Chen, Yingkai and Milde, Moritz and Delbruck, Tobi and
-                       Gruev, Viktor",
-      month         =  dec,
-      year          =  2021,
-      url           = "http://arxiv.org/abs/2112.01933",
-      archivePrefix = "arXiv",
-      eprint        = "2112.01933",
-      primaryClass  = "cs.CV",
-      arxivid       = "2112.01933"
     }
 
 ### 6. Contact
