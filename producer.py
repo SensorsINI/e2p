@@ -303,13 +303,21 @@ def producer(queue:Queue):
                                     recording_activated=True
                                     recording_folder_current=os.path.join(recording_folder_base,get_timestr())
                                     Path(recording_folder_current).mkdir(parents=True, exist_ok=True)
-                                    log.info(f'started recording to folder {recording_folder_current}')
+                                    log.info(f'started recording PNG frames to folder {recording_folder_current}')
                                 else:
                                     recording_activated=False
-                                    log.info(f'stopped recording to folder {recording_folder_current}')
+                                    log.info(f'stopped recording PNG frames to folder {recording_folder_current}')
                             elif k==ord('l'): # numpy file of events saved at the end
                                 save_numpy= not save_numpy
-                                log.info(f'save_numpy={save_numpy}')
+                                if save_numpy:
+                                    log.info(f'started saving events to RAM')
+                                else:
+                                    log.info(f'writing saved events to numpy file...')
+                                    try:
+                                        save_events_to_numpy(recording_folder_base, saved_events)
+                                    except Exception as e:
+                                        log.error(f'could not save events: {e}')
+
                             elif k==ord(' '):
                                 paused=not paused
                                 print(f'paused={paused}')
@@ -324,22 +332,26 @@ def producer(queue:Queue):
                         if recording_frame_number % 80 == 0:
                             print('')
 
-        if saved_events is not None and recording_folder_base is not None and len(saved_events)>0:
-            nevents=0
-            for a in saved_events:
-                nevents+=len(a)
-            o=np.empty((nevents,5),dtype=np.float32)
-            idx=0
-            for a in tqdm(saved_events,desc='converting events to numpy'):
-                o[idx:idx+a.shape[0]]=a
-                idx+=a.shape[0]
-            data_path=os.path.join(recording_folder_base,f'events-{get_timestr()}.npy')
-            log.info(f'saving {eng(nevents)} events to {data_path}')
-            np.save(data_path,o)
-            desktop.open(data_path)
     except KeyboardInterrupt as e:
         log.info(f'got KeyboardInterrupt {e}')
         cleanup()
+
+
+def save_events_to_numpy(recording_folder_base, saved_events):
+    if saved_events is not None and recording_folder_base is not None and len(saved_events) > 0:
+        nevents = 0
+        for a in saved_events:
+            nevents += len(a)
+        o = np.empty((nevents, 5), dtype=np.float32)
+        idx = 0
+        for a in tqdm(saved_events, desc='converting events to numpy'):
+            o[idx:idx + a.shape[0]] = a
+            idx += a.shape[0]
+        data_path = os.path.join(recording_folder_base, f'events-{get_timestr()}.npy')
+        log.info(f'saving {eng(nevents)} events to {data_path}')
+        np.save(data_path, o)
+        desktop.open(recording_folder_base) # if skype opens on gnome, see https://www.reddit.com/r/linuxquestions/comments/gxsqt3/skype_somehow_inserted_itself_into_xdgopen_and_i/
+
 
 def get_timestr():
     timestr = time.strftime("%Y%m%d-%H%M%S")

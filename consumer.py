@@ -144,10 +144,10 @@ def consumer(queue:Queue):
                     recording_activated = True
                     recording_folder_current = os.path.join(recording_folder_base, get_timestr())
                     Path(recording_folder_current).mkdir(parents=True, exist_ok=True)
-                    log.info(f'started recording to folder {recording_folder_current}')
+                    log.info(f'started recording PNG frames to folder {recording_folder_current}')
                 else:
                     recording_activated = False
-                    log.info(f'stopped recording to folder {recording_folder_current}')
+                    log.info(f'stopped recording PNG frames to folder {recording_folder_current}')
             elif k==ord('o'):
                 if playback_file:
                     log.info(f'closing playback file {playback_file}')
@@ -188,7 +188,8 @@ def consumer(queue:Queue):
                     playback_next_time=playback_current_time+playback_frame_duration
 
                     idx_start=np.searchsorted(playback_timestamps,playback_current_time)
-                    idx_end=np.searchsorted(playback_timestamps,playback_next_time)
+                    # idx_end=np.searchsorted(playback_timestamps,playback_current_time+FRAME_DURATION_US*1e-6)
+                    idx_end=np.searchsorted(playback_timestamps,playback_current_time+playback_frame_duration)
                     events=playback_events[idx_start:idx_end,:]
                     playback_current_time=playback_next_time
                     if playback_current_time>playback_timestamps[-1]:
