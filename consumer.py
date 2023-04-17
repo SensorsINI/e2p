@@ -70,6 +70,8 @@ def consumer(queue:Queue):
     recording_frame_number = 0
     server_socket=None
 
+    brightness=prefs.get('brightness',1.0)
+
     if queue is None:
         log.info('opening UDP port {} to receive frames from producer'.format(PORT))
         server_socket: socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -139,6 +141,14 @@ def consumer(queue:Queue):
             #     args.use_firenet = not args.use_firenet
             #     model,checkpoint_path = load_selected_model(args, device)
             #     print(f' changed mode to args.use_firenet={args.use_firenet}')
+            elif k == ord('B'):
+                brightness *= 1.1
+                prefs.put('brightness', brightness)
+                print(f'increased brightness of intensity reconstruction to {brightness:.2f}')
+            elif k == ord('b'):
+                brightness /= 1.1
+                prefs.put('brightness', brightness)
+                print(f'decreased brightness of intensity reconstruction to {brightness:.2f}')
             elif k == ord('r'):
                 if not recording_activated:
                     recording_activated = True
@@ -258,7 +268,7 @@ def consumer(queue:Queue):
                     input = torch.from_numpy(voxel_five_float32).to(device)
                     if not args.use_firenet:  # e2p, just use voxel grid from producer
                         output = model(input)
-                        intensity, aolp, dolp = compute_e2p_output(model, output, args) # output are RGB images with gray, HSV, and HOT coding
+                        intensity, aolp, dolp = compute_e2p_output(model, output, args, brightness) # output are RGB images with gray, HSV, and HOT coding
                         if frames_without_drop>0 and frames_without_drop%args.reset_period==0:
                             reset_e2p_state(args,model)
                     else:  # firenet, we need to extract the 4 angle channels and run firenet on each one
@@ -272,6 +282,8 @@ def consumer(queue:Queue):
 
                     dvs = cv2.cvtColor(frame_255[::2,::2],cv2.COLOR_GRAY2RGB)
                     # dvs = np.repeat(frame_255[::2,::2], 3, axis=1).astype(np.uint8)  # need to dup channels and reduce res to display together
+
+
 
                     if playback_file:
                         mycv2_put_text(dvs, f'DVS {playback_frame_duration*1e3:.1f}ms@{playback_current_time:.2f}s')
@@ -421,13 +433,15 @@ def norm_max_min(v):
     return v
 
 
-def compute_e2p_output(model, output, args):
+def compute_e2p_output(model, output, args, brightness):
     """ Computes intensity, aolp, dolp outputs from  E2P output.
     :param output: DNN output
+    :param args: the program arguments
+    :param brightness: modified brightness of intensity channel, nominally 1.0, multiplies
     :returns: intensity, aolp, dolp
         RGB color 2d images for cv2.imshow to render
     """
-    intensity = torch2cv2(output['i'])
+    intensity = torch2cv2(output['i'])*brightness
     aolp = torch2cv2(output['a']) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
     dolp = torch2cv2(output['d'])
     aolp_mask=np.where(dolp<args.dolp_aolp_mask_level*255)

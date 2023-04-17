@@ -24,6 +24,8 @@ import numpy as np
 import select
 import multiprocessing.connection as mpc
 from multiprocessing import  Pipe,Queue
+from utils.prefs import MyPreferences
+prefs=MyPreferences()
 
 from tqdm import tqdm
 
@@ -67,6 +69,7 @@ def producer(queue:Queue):
     save_numpy=args.save_numpy
     num_bins=args.num_bins
     sensor_resolution=args.sensor_resolution
+
 
     recording_frame_number = 0
     warning_counter=0
@@ -281,7 +284,6 @@ def producer(queue:Queue):
                                     print(f'frames are {frame_count_k_events}k events')
                                 else:
                                     print(f'frames are {frame_duration_ms}ms long')
-
                             elif k==ord('f'):
                                 if flex_time_mode:
                                     frame_count_k_events=decrease(frame_count_k_events, 4)
@@ -317,7 +319,6 @@ def producer(queue:Queue):
                                         save_events_to_numpy(recording_folder_base, saved_events)
                                     except Exception as e:
                                         log.error(f'could not save events: {e}')
-
                             elif k==ord(' '):
                                 paused=not paused
                                 print(f'paused={paused}')
@@ -379,7 +380,8 @@ def print_key_help():
           'h or ?: print this help\n'
           'p: print timing info\n'
           't: toggle flex time (constant-duration / constant-count frames)\n'
-          'f or s: faster or slower frames (less duration or count vs more)'
+          'f or s: faster or slower frames (less duration or count vs more)\n'
+          'B or b: Brighter or darker frames\n'
           'r: toggle recording PNG frames\n'
           'l: toggle saving events to write numpy file at the end\n'
           'q or x or ESC: exit')
