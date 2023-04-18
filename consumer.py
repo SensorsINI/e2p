@@ -141,11 +141,11 @@ def consumer(queue:Queue):
             #     args.use_firenet = not args.use_firenet
             #     model,checkpoint_path = load_selected_model(args, device)
             #     print(f' changed mode to args.use_firenet={args.use_firenet}')
-            elif k == ord('B'):
+            elif k == ord('b'):
                 brightness *= 1.1
                 prefs.put('brightness', brightness)
                 print(f'increased brightness of intensity reconstruction to {brightness:.2f}')
-            elif k == ord('b'):
+            elif k == ord('d'):
                 brightness /= 1.1
                 prefs.put('brightness', brightness)
                 print(f'decreased brightness of intensity reconstruction to {brightness:.2f}')
@@ -335,6 +335,7 @@ def print_key_help(args):
           'p: print timing info\n'
           'o: open recording numpy file to play back\n'
           's or f: slow down (briefer frames) or speed up (longer frames) playback'
+          'b or d: brighter or darker frames\n'
           'r: toggle recording on/off; see console output for timestamped output folder\n'
           f'e: reset E2P hidden state; it is currently reset every {args.reset_period} frames by --reset_period argument\n'
           'space: toggle pause\n'

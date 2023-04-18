@@ -381,8 +381,7 @@ def print_key_help():
           'p: print timing info\n'
           't: toggle flex time (constant-duration / constant-count frames)\n'
           'f or s: faster or slower frames (less duration or count vs more)\n'
-          'B or b: Brighter or darker frames\n'
-          'r: toggle recording PNG frames\n'
+           'r: toggle recording PNG frames\n'
           'l: toggle saving events to write numpy file at the end\n'
           'q or x or ESC: exit')
 
