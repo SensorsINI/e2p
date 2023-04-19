@@ -52,6 +52,7 @@ Unzip E2PD.zip to ./data/ folder
 ### Recording Data using PDAVIS
 - Using PDAVIS with jAER to record aedat2 files and save them at ./data/new/real/
 - The recording should end with the extention _.aedat_
+- Modify [my_extract_events.py](my_extract_events.py) to point root=XXX to your folder where you stored the new .aedat file(s)
 - extract PDAVIS frames with [my_extract_events.py](my_extract_events.py)
   - `python my_extract_aps.py`
 - manually extract PDAVIS events from jaer using EventFilter DavisTextOutputWriter; see https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/#bookmark=id.9xld1vw3ttt0
