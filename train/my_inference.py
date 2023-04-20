@@ -198,6 +198,7 @@ def main(args, model):
             flops, params = clever_format([flops, params], "%.3f")
             print(model)
             print('[Statistics Information]\nFLOPs: {}\nParams: {}'.format(flops, params))
+            print('exiting after first frame since args.calculate_mode was set')
             exit(0)
 
         if args.is_flow:
@@ -388,15 +389,15 @@ def main(args, model):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Template')
-    parser.add_argument('--checkpoint_path', required=True, type=str,
+    parser.add_argument('--checkpoint_path', type=str, default='models/e2p-0322_033239-tobi-office-only-from-scratch.pth',
                         help='path to latest checkpoint (default: None)')
-    parser.add_argument('--events_file_path', required=True, type=str,
+    parser.add_argument('--events_file_path', type=str, default='/mnt/c/Users/tobid/Downloads/Davis346B-2023-03-16T15-42-43+0100-00000000-0-pdavis-polfilter-tobi-office-window2.h5',
                         help='path to events (HDF5)')
     parser.add_argument('--output_folder', default="/tmp/output", type=str,
                         help='where to save outputs to')
-    parser.add_argument('--height', required=True, type=int, default=260,
+    parser.add_argument('--height',  type=int, default=260,
                         help='sensor resolution: height')
-    parser.add_argument('--width', required=True, type=int, default=346,
+    parser.add_argument('--width',  type=int, default=346,
                         help='sensor resolution: width')
     parser.add_argument('--device', default='0', type=str,
                         help='indices of GPUs to enable')
