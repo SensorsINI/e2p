@@ -24,7 +24,7 @@ synthetic_list = list[:29]
 real_list = list[29:]
 
 for name in synthetic_list:
-    call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder ./output_synthetic/{}/{}'.format(
+    call_with_args = 'python my_inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder ./output_synthetic/{}/{}'.format(
         ckpt_path, name, method, name.split('/')[-1].split('_')[0])
 
     print(call_with_args)
@@ -32,7 +32,7 @@ for name in synthetic_list:
     os.system(call_with_args)
 
 for name in real_list:
-    call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real/{}/{}'.format(
+    call_with_args = 'python my_inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real/{}/{}'.format(
         ckpt_path, name, method, name.split('/')[-1].split('.')[0])
 
     print(call_with_args)

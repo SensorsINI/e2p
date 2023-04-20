@@ -16,7 +16,7 @@ import numpy as np
 import cv2
 import math
 from tqdm import tqdm
-from events_contrast_maximization.utils.event_utils import binary_search_h5_dset
+from train.events_contrast_maximization.utils.event_utils import binary_search_h5_dset
 from easygui import diropenbox
 from utils.prefs import MyPreferences
 prefs=MyPreferences()

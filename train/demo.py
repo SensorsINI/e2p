@@ -29,7 +29,7 @@ with open(test_txt) as f:
             list.append(line[:-1])
 
 for name in list:
-    call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_pdavis/{}/{} --legacy_norm --voxel_method t_seconds --t 5000 --sliding_window_t 0 '.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    call_with_args = 'python my_inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_pdavis/{}/{} --legacy_norm --voxel_method t_seconds --t 5000 --sliding_window_t 0 '.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
 
     print(call_with_args)
 

@@ -12,18 +12,18 @@ import collections
 import numpy as np
 import torch
 # local modules
-from base import BaseTrainer
-from utils import inf_loop, MetricTracker
-from utils.myutil import mean
-from utils.training_utils import make_flow_movie, make_flow_movie_p, select_evenly_spaced_elements, make_tc_vis, make_vw_vis
-from utils.data import data_sources
+from train.base import BaseTrainer
+from train.utils import inf_loop, MetricTracker
+from train.utils.myutil import mean
+from train.utils.training_utils import make_flow_movie, make_flow_movie_p, select_evenly_spaced_elements, make_tc_vis, make_vw_vis
+from train.utils.data import data_sources
 import cv2
 import math
 
 from torch.cuda.amp import autocast as autocast
 from torch.cuda.amp import GradScaler as GradScaler
 
-from utils.util import torch2cv2
+from train.utils.util import torch2cv2
 
 
 class Trainer(BaseTrainer):

@@ -35,12 +35,12 @@ from model import model_v as model_arch
 # from model import model_ed as model_arch
 # from model.model import ColorNet
 
-from utils.util import ensure_dir, flow2bgr_np
-from data_loader.data_loaders import InferenceDataLoader
-from utils.util import CropParameters, get_height_width, torch2cv2, \
+from train.utils.util import ensure_dir, flow2bgr_np
+from train.data_loader.data_loaders import InferenceDataLoader
+from train.utils.util import CropParameters, get_height_width, torch2cv2, \
     append_timestamp, setup_output_folder, torch2numpy, numpy2cv2
 from utils.timers import CudaTimer
-from utils.henri_compatible import make_henri_compatible
+from train.utils.henri_compatible import make_henri_compatible
 
 from train.parse_config import ConfigParser
 

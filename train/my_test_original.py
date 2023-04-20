@@ -65,43 +65,43 @@ real_list = list[29:]
 for name in list:
 
     # for directly test the original firenet model
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --firenet_legacy'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 240 --width 320 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --firenet_legacy'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 130 --width 173 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --firenet_legacy --voxel_method t_seconds --t 10000 --sliding_window_t 0'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --firenet_legacy'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 240 --width 320 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --firenet_legacy'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 130 --width 173 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --firenet_legacy --voxel_method t_seconds --t 10000 --sliding_window_t 0'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
 
     # for directly test the original e2vid model
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 240 --width 320 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --e2vid'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 240 --width 320 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --e2vid'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
 
     # for test my own model
     # five input channels
     ############# norm
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --legacy_norm'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_real/{}/{} --legacy_norm'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --robust_norm'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --legacy_norm'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_real/{}/{} --legacy_norm'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --robust_norm'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
     ############ without norm
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
-    call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    call_with_args = 'python my_inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
     ########### without norm for attention visualization
     # call_with_args = 'python inference_v.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_attention/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
     ########### without norm for ablation study
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_ablation/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_ablation/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
     ########## without norm for ablation study predict s
     # call_with_args = 'python inference_s.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_ablation/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
     ########## without norm for ablation study predict i
     # call_with_args = 'python inference_i.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_ablation/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
     # without norm + calculation mode
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_calculation/{}/{} --calculate_mode'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_calculation/{}/{} --calculate_mode'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
     # without norm + test speed
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_calculation/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output_calculation/{}/{}'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
     # without norm + fixed time duration
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real_33ms/{}/{} --voxel_method t_seconds --t 33000 --sliding_window_t 0'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real_25ms/{}/{} --voxel_method t_seconds --t 25000 --sliding_window_t 0'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real_10ms/{}/{} --voxel_method t_seconds --t 10000 --sliding_window_t 0'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real_5ms/{}/{} --voxel_method t_seconds --t 5000 --sliding_window_t 0'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real_33ms/{}/{} --voxel_method t_seconds --t 33000 --sliding_window_t 0'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real_25ms/{}/{} --voxel_method t_seconds --t 25000 --sliding_window_t 0'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real_10ms/{}/{} --voxel_method t_seconds --t 10000 --sliding_window_t 0'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder ./output_real_5ms/{}/{} --voxel_method t_seconds --t 5000 --sliding_window_t 0'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
     # ten input channels
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --update'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 480 --width 640 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --update'.format(ckpt_path, name, method, name.split('/')[-1].split('.')[0])
     # five input channels + davis346
-    # call_with_args = 'python inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --legacy_norm'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
+    # call_with_args = 'python my_inference.py --checkpoint_path {} --height 260 --width 346 --device 0 --events_file_path {} --output_folder /home/mhy/firenet-pdavis/output/{}/{} --legacy_norm'.format(ckpt_path, name, method, name.split('/')[-1].split('_')[0])
 
     print(call_with_args)
 

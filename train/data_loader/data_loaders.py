@@ -10,12 +10,12 @@
 """
 from torch.utils.data import DataLoader
 # local modules
-from .dataset import *
-from utils.data import concatenate_subfolders, concatenate_datasets
+from train.data_loader.dataset import *
+from train.utils.data import concatenate_subfolders, concatenate_datasets
 
 
 class InferenceDataLoader(DataLoader):
-    def __init__(self, data_path, num_workers=1, pin_memory=True, dataset_kwargs=None, ltype="H5", real_data=False, direction=None):
+    def __init__(self, data_path, num_workers=0, pin_memory=True, dataset_kwargs=None, ltype="H5", real_data=False, direction=None):
         if dataset_kwargs is None:
             dataset_kwargs = {}
         if ltype == "H5":

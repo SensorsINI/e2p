@@ -32,14 +32,17 @@ def main(args):
         h = 480
         w = 640
 
-    call_with_args = 'python inference.py --checkpoint_path {} --height {} --width {} --device 0 --events_file_path {} --output_folder {}/{}'.format(
+    call_with_args = 'python my_inference.py --checkpoint_path {} --height {} --width {} --device 0 --events_file_path {} --output_folder {}/{}'.format(
         h, w, ckpt_path, input_path, output_dir, name)
 
     print(call_with_args)
 
-    os.system(call_with_args)
+    ret=os.system(call_with_args)
 
-print('Succeed!')
+    if ret==0:
+        print('Succeeded')
+    else:
+        print('failed, check arguments')
 
 
 if __name__ == '__main__':
@@ -51,9 +54,9 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', type=str, default='./infer_output/',
                         help='path to inference outputs')
     parser.add_argument('--with_gt', action='store_true',
-                        help='If true, save the frame in the input hdf5 file')
+                        help='If true, save the GT frames from the input hdf5 file')
     parser.add_argument('--if_real', action='store_true',
-                        help='True indicates the input file comes from real PDAVIS')
+                        help='True indicates the input file comes from real PDAVIS, False means simulated or Sony input')
 
     args = parser.parse_args()
 

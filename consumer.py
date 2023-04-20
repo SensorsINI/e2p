@@ -39,7 +39,7 @@ try:
 except Exception as e:
     print(e)
 
-# from inference.py
+# from my_inference.py
 import e2p as model_arch
 from train.utils.henri_compatible import make_henri_compatible
 from train.parse_config import ConfigParser
@@ -69,6 +69,11 @@ def consumer(queue:Queue):
     recording_folder_current=None
     recording_frame_number = 0
     server_socket=None
+
+    aolp_colorwheel = cv2.imread('media/aolp_dolp_colorscales.png')
+    cv2.namedWindow('aolp_colorwheel')
+    cv2.imshow('aolp_colorwheel', aolp_colorwheel)
+    cv2.waitKey(100)
 
     brightness=prefs.get('brightness',1.0)
 
@@ -183,10 +188,10 @@ def consumer(queue:Queue):
                         log.warning('no file selected')
             elif k==ord('s'):
                 playback_frame_duration/=np.sqrt(2)
-                print(f'frame slowed down to {playback_frame_duration*1e3:.2f}ms frames')
+                print(f'frame duration decreased to {playback_frame_duration*1e3:.2f}ms frames')
             elif k==ord('f'):
                 playback_frame_duration*=np.sqrt(2)
-                print(f'frame sped up to {playback_frame_duration*1e3:.2f}ms frames')
+                print(f'frame duration increased to {playback_frame_duration*1e3:.2f}ms frames')
 
 
             elif k != 255:
@@ -269,7 +274,7 @@ def consumer(queue:Queue):
                     if not args.use_firenet:  # e2p, just use voxel grid from producer
                         output = model(input)
                         intensity, aolp, dolp = compute_e2p_output(model, output, args, brightness) # output are RGB images with gray, HSV, and HOT coding
-                        if frames_without_drop>0 and frames_without_drop%args.reset_period==0:
+                        if frames_without_drop>0 and args.reset_period>0 and frames_without_drop%args.reset_period==0:
                             reset_e2p_state(args,model)
                     else:  # firenet, we need to extract the 4 angle channels and run firenet on each one
 
@@ -301,6 +306,7 @@ def consumer(queue:Queue):
                         if recording_frame_number % 80 == 0:
                             print('')
 
+    cv2.destroyAllWindows()
 
     # calculate the computational efficiency
     if args.calculate_model_flops_size:
@@ -440,9 +446,12 @@ def compute_e2p_output(model, output, args, brightness):
     :param args: the program arguments
     :param brightness: modified brightness of intensity channel, nominally 1.0, multiplies
     :returns: intensity, aolp, dolp
+        the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
         RGB color 2d images for cv2.imshow to render
     """
     intensity = torch2cv2(output['i'])*brightness
+    # compute aolp mod 1 to unwrap the wrapped AoLP
+    # aolp = torch2cv2(output['a']%1) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
     aolp = torch2cv2(output['a']) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
     dolp = torch2cv2(output['d'])
     aolp_mask=np.where(dolp<args.dolp_aolp_mask_level*255)

@@ -4,7 +4,7 @@
  @E-mail  : haiyang.mei@outlook.com
  
  @Project : firenet-pdavis
- @File    : train.py
+ @File    : my_train.py
  @Function:
  
 """
@@ -14,14 +14,14 @@ import argparse
 import collections
 import torch
 import numpy as np
-import data_loader.data_loaders as module_data
-import model.loss as module_loss
+import train.data_loader.data_loaders as module_data
+import train.model.loss as module_loss
 # import model.model as module_arch
 # import model.model_mhy as module_arch
-import model.model_v as module_arch
+import train.model.model_v as module_arch
 # import model.model_ed as module_arch
 from train.parse_config import ConfigParser
-from trainer import Trainer, Trainer_P, Trainer_S, Trainer_I, Trainer_RP
+from train.trainer import Trainer, Trainer_P, Trainer_S, Trainer_I, Trainer_RP
 
 # fix random seeds for reproducibility
 SEED = 2022
@@ -127,7 +127,7 @@ def main(config):
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Training')
-    args.add_argument('-c', '--config', default='./e2p.json', type=str,
+    args.add_argument('-c', '--config', default='train/e2p.json', type=str,
                       help='config file path (default: None)')
     args.add_argument('-r', '--resume', default=None, type=str,
                       help='path to latest checkpoint (default: None)')

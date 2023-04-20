@@ -92,7 +92,7 @@ NUM_BINS = 5 # number of bins for event voxel (frames), must be 5
 SENSOR_RESOLUTION = (260, 346) # sensor resolution in pixels, vertical, horizontal
 IMSIZE = 224  # CNN input image size, must be small enough that single frame of bytes is less than 64kB for UDP
 DOLP_AOLP_MASK_LEVEL=.35 # level of DoLP below which to mask the AoLP value since it is likely not meaningful
-E2P_RESET_PERIOD=60 # The E2P DNN is reset every this many frames; 60 was used in training
+E2P_RESET_PERIOD=0 # The E2P DNN is reset every this many frames; 60 was used in training, 0 disables
 EVENT_COUNT_CLIP_VALUE = 3  # full count value for collecting histograms of DVS events
 SHOW_DVS_OUTPUT = True # producer shows the accumulated DVS frames as aid for focus and alignment
 MIN_PRODUCER_FRAME_INTERVAL_MS=3.0 # inference takes about 15ms for PDAVIS reconstruction and normalization takes 3ms
@@ -111,6 +111,7 @@ UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / m
 USE_FIRENET=False # True to use firenet DNN from Cedric, False to use e2p DNN
 # E2P_MODEL= 'models/0326_033239_with_circular_aolp_loss_150ep.pth' # 'models/0326_212403_with_circular_aolp_loss_150ep.pth' # 'models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth' # 'models/e2ptobi-data.pth' #'./e2p-cvpr2023.pth'
 E2P_MODEL= 'models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth' # 'models/e2ptobi-data.pth' #'./e2p-cvpr2023.pth'
+# E2P_MODEL= 'models/0418_090002_with_abs_sin_correct_scale_aolp_150ep.pth' # 'models/e2ptobi-data.pth' #'./e2p-cvpr2023.pth'
 FIRENET_MODEL='./firenet/ckpt/firenet_1000.pth.tar'
 
 import signal

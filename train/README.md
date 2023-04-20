@@ -52,8 +52,8 @@ Unzip E2PD.zip to ./data/ folder
 ### Recording Data using PDAVIS
 - Using PDAVIS with jAER to record aedat2 files and save them at ./data/new/real/
 - The recording should end with the extention _.aedat_
-- Modify [my_extract_events.py](my_extract_events.py) to point root=XXX to your folder where you stored the new .aedat file(s)
-- extract PDAVIS frames with [my_extract_events.py](my_extract_events.py)
+- Modify [my_extract_events.py](my_extract_events.py) to point _root=XXX_ to your folder where you stored the new .aedat file(s)
+- Modify [my_extract_aps.py](my_extract_aps.py) to point _root_ variable to your same data folder and _jaer_ variable to your installed jaer folder. Then extract PDAVIS frames with
   - `python my_extract_aps.py`
 - manually extract PDAVIS events from jaer using EventFilter DavisTextOutputWriter; see https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/#bookmark=id.9xld1vw3ttt0
   -  Set the options "rewindBeforeRecording", "dvsEvents", and "closeOnRewind". Leave "useSignedPolarity" unselected.
@@ -61,14 +61,14 @@ Unzip E2PD.zip to ./data/ folder
     - (** Because of bug in DavisTextOutputWriter, it is essential to open the output _xxx-events.txt_ and delete the first _n_ rows as they are duplicated. __n__ will be large number of perhaps 10k lines! **. If you don't do this you will get bogus timestamps that mess up the synchronization between events and frames and the training will have meaningless GT target.)
     - (** To find how many rows are duplicated, we can check the timestamp of the first frame in xxx-timecode.txt and then use this timestamp to find where the timestamp discontinuity appears in xxx-events.txt **)
     - ![write-events-txt-file.png](media%2Fwrite-events-txt-file.png)
-- convert avi to frames with [my_video2frame.py](my_video2frame.py)
+- Modify [my_video2frame.py](my_video2frame.py) as above to point to correct data folder, and then convert avi to frames with
   - `python my_video2frame.py`
-- merge events, frame, frame_idx, frame_ts, intensity, aolp, dolp into one hdf5 file for the use of DNN using [my_merge_h5.py](my_merge_h5.py)
+- Use [my_merge_h5.py](my_merge_h5.py) to merge events, frame, frame_idx, frame_ts, intensity, aolp, dolp into one hdf5 file for the use of DNN with the below command. (It will open a directory chooser for you.) 
   - `python my_merge_h5.py`
 - create train/test list txt with [my_create_real_list.py](my_create_real_list.py)
   - `python my_create_real_list.py`
 
-Now you should have the new list of training files to add to existing list
+Now you should have the new list _real.txt_ of training files to split over the existing lists _train.txt_ and _test.txt_
 
 ### Training input hdf5 files
 The HDF5 (.h5) files should have the following contents

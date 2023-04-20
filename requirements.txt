@@ -16,4 +16,5 @@ thop
 IPython
 easygui
 pypref
+chardet
 

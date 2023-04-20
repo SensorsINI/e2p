@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torchvision import utils
 # local modules
-from utils.myutil import quick_norm
+from train.utils.myutil import quick_norm
 
 
 def make_tc_vis(tc_output):

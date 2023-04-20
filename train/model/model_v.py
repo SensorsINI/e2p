@@ -20,10 +20,10 @@ import torch.nn.functional as F
 from .base.base_model import BaseModel
 from .submodules_v import *
 
-from .legacy import FireNet_legacy
-from model.model_original import E2VIDRecurrent
-from utils.henri_compatible import make_henri_compatible
-from model import model_original as model_arch
+from train.model.legacy import FireNet_legacy
+from train.model.model_original import E2VIDRecurrent
+from train.utils.henri_compatible import make_henri_compatible
+from train.model import model_original as model_arch
 
 
 class V0(BaseModel):

@@ -16,12 +16,12 @@ import torch
 import h5py
 import os
 # local modules
-from utils.data_augmentation import *
-from utils.data import data_sources
-from events_contrast_maximization.utils.event_utils import events_to_voxel_torch, \
+from train.utils.data_augmentation import *
+from train.utils.data import data_sources
+from train.events_contrast_maximization.utils.event_utils import events_to_voxel_torch, \
     events_to_neg_pos_voxel_torch, binary_search_torch_tensor, events_to_image_torch, \
     binary_search_h5_dset, get_hot_event_mask, save_image
-from utils.util import read_json, write_json
+from train.utils.util import read_json, write_json
 
 
 class BaseVoxelDataset(Dataset):

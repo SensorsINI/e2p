@@ -283,21 +283,21 @@ def producer(queue:Queue):
                                 if flex_time_mode:
                                     print(f'frames are {frame_count_k_events}k events')
                                 else:
-                                    print(f'frames are {frame_duration_ms}ms long')
+                                    print(f'frames are {frame_duration_ms:.2f}ms long')
                             elif k==ord('f'):
                                 if flex_time_mode:
-                                    frame_count_k_events=decrease(frame_count_k_events, 4)
+                                    frame_count_k_events=int(decrease(frame_count_k_events, 4))
                                     print(f'shorter frames now are {frame_count_k_events}k events')
                                 else:
                                     frame_duration_ms=decrease(frame_duration_ms,4)
-                                    print(f'shorter frames now are {frame_duration_ms}ms long')
+                                    print(f'shorter frames now are {frame_duration_ms:.2f}ms long')
                             elif k==ord('s'):
                                 if flex_time_mode:
-                                    frame_count_k_events = increase(frame_count_k_events, 200)
+                                    frame_count_k_events = int(increase(frame_count_k_events, 200))
                                     print(f'longer frames now are {frame_count_k_events}k events')
                                 else:
                                     frame_duration_ms = increase(frame_duration_ms,200)
-                                    print(f'longer frames now are {frame_duration_ms}ms long')
+                                    print(f'longer frames now are {frame_duration_ms:.2f}ms long')
                             elif k == ord('p'):
                                 print_timing_info()
                             elif k == ord('r'):
@@ -359,10 +359,12 @@ def get_timestr():
     return timestr
 
 
+SPEED_UP_FACTOR=2**.25
+
 def increase(val,limit):
-    return val*2 if val*2<=limit else limit
+    return val*SPEED_UP_FACTOR if val*SPEED_UP_FACTOR<=limit else limit
 def decrease(val,limit):
-    return val/2 if val/2>=limit else limit
+    return val/SPEED_UP_FACTOR if val/SPEED_UP_FACTOR>=limit else limit
 
 def is_frame_not_complete(events, flex_time_mode, frame_duration_ms, frame_count_k_events):
     if events is None:

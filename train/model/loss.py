@@ -2,11 +2,11 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 # local modules
-from PerceptualSimilarity import models
+from train.PerceptualSimilarity import models
 from train.utils import loss
-from model.mhy_ssim import ssim, ms_ssim, SSIM, MS_SSIM
+from train.model.mhy_ssim import ssim, ms_ssim, SSIM, MS_SSIM
 import torch.nn as nn
-import dct
+import train.dct as dct
 
 
 class combined_perceptual_loss():
@@ -370,7 +370,7 @@ class mdf_d_loss():
 ###################################################################################################
 ############################## Embedding Consistency Loss #########################################
 ###################################################################################################
-from model.submodules import *
+from train.model.submodules import *
 import functools
 class ec_loss():
     def __init__(self, weight=1.0):
@@ -526,7 +526,7 @@ class ff_loss():
 ###################################################################################################
 ############################## Polarization Autoencoder Loss ######################################
 ###################################################################################################
-from model.autoencoder import AutoEncoder
+from train.model.autoencoder import AutoEncoder
 import functools
 class pae_loss():
     def __init__(self, weight=1.0):

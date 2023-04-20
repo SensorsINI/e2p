@@ -14,10 +14,11 @@ sys.path.append('..')
 from misc import check_mkdir
 import cv2
 
-dir = 'data/E2PD/new'
+dir = '/home/tobi/Downloads/new'
 video_list = sorted([x for x in os.listdir(dir) if x.endswith('.avi')])
 
 for video_name in video_list:
+    print(f'processing {video_name}')
     video_path = os.path.join(dir, video_name)
     output_dir = os.path.join(dir, video_name.split('.')[0])
     check_mkdir(output_dir)
@@ -37,4 +38,4 @@ for video_name in video_list:
     print(length)
     print(count)
 
-print('Nice!')
+print(f'Done converting AVI to frames for {video_list}')

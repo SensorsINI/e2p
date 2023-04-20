@@ -500,16 +500,16 @@ def events_to_voxel_torch(xs, ys, ts, ps, B, device=None, sensor_size=(260, 346)
             bilinear_weights = torch.max(zeros, 1.0 - torch.abs(t_norm - bi))
             weights = ps * bilinear_weights
             vb = events_to_image_torch(xs, ys,
-                    weights, device, sensor_size=sensor_size,
+                    ps=weights, device=device, sensor_size=sensor_size,
                     clip_out_of_range=False)
         else:
             tstart = ts[0] + dt * bi
             tend = tstart + dt
-            beg = binary_search_torch_tensor(t, 0, len(ts)-1, tstart)
-            end = binary_search_torch_tensor(t, 0, len(ts)-1, tend)
+            beg = binary_search_torch_tensor(ts, 0, len(ts)-1, tstart)
+            end = binary_search_torch_tensor(ts, 0, len(ts)-1, tend)
             vb = events_to_image_torch(xs[beg:end], ys[beg:end],
-                    ps[beg:end], device, sensor_size=sensor_size,
-                    clip_out_of_range=False)
+                    ps=ps[beg:end], device=device, sensor_size=sensor_size,
+                    clip_out_of_range=False, interpolation=None)
         bins.append(vb)
     bins = torch.stack(bins)
     return bins
@@ -533,8 +533,8 @@ def events_to_neg_pos_voxel_torch(xs, ys, ts, ps, B, device=None,
         temporally distributed
     Returns
     -------
-    voxel_pos: voxel of the positive events
-    voxel_neg: voxel of the negative events
+    voxel_pos: voxel of the positive events [bin,y,x]
+    voxel_neg: voxel of the negative events [bin,y,x]
     """
     zero_v = torch.tensor([0.])
     ones_v = torch.tensor([1.])

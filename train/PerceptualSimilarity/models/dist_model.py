@@ -19,7 +19,7 @@ from IPython import embed
 
 from . import networks_basic as networks
 # import models as util
-import PerceptualSimilarity.models as util
+import train.PerceptualSimilarity.models as util
 
 class DistModel(BaseModel):
     def name(self):
