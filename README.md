@@ -67,14 +67,17 @@ We successfully run the PDAVIS demo on Windows 11 inside a WSL2 virtual Ubuntu 2
  1. The pretrained polarization reconstruction model [e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth](models%2Fe2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth) is in the _models_ folde.
  2. Connect hardware: PDAVIS to USB.
 
-#### Using a single command to launch producer and consumer processes using python multiprocessing
-In a terminal at root of project run
+#### Using a single command to launch LIVE producer and consumer processes using python multiprocessing
+In a terminal at root of e2p project run
 ```bash
 python -m pdavis_demo
 ```
 Once the demo is running, you can control it via keystroke commands in the terminal windows and the separate DVS (producer) and reconstruction (consumer) windows. Type 'h' in the window to see help printed to terminal for available commands.
+pdavis_demo uses python _Queue_ to send voxel frames from producer to consumer processes.
 
-#### Using two terminals to run the producer (DAVIS) and consumer (E2P) processes
+#### Using two terminals to run the LIVE [producer](producer.py) (DAVIS) and [consumer](consumer.py) (E2P) processes
+
+This method splits to 2 terminal processes but is limited to smaller frame size by UDP transport.
 
  1. In first terminal run producer 
     ```bash
@@ -83,6 +86,10 @@ Once the demo is running, you can control it via keystroke commands in the termi
  2. In a second terminal run consumer
     ```bash
     python -m consumer
+    ```
+#### Using [player](player.py)  to play back a dataset h5 file
+    ```bash
+    python -m player
     ```
 
 ### 4. Results
