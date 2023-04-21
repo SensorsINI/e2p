@@ -210,6 +210,7 @@ def main(args):
                       'space: toggle pause\n'
                       'r: rewind\n'
                       'b: toggle direction backwards/forwards\n'
+                      's or f: slower or faster playback\n'
                       'o: open a new h5 to play back\n'
                       'l: toggle logging (recording) frames to disk'
                       'e: rEset E2P hidden states\n'
