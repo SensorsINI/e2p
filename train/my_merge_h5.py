@@ -35,12 +35,40 @@ for aedat_name in tqdm(list):
     timestamp_path = os.path.join(root, name + '-timecode.txt')
     h5_path = os.path.join(root, name + '.h5')
     frame_idx_path = os.path.join(root, name + '-frame_idx.txt')
+    print(f'***** processing file {aedat_name} to create HDF5 file {h5_path}')
 
     # read events
-    print(f'loading events from {events_path} to create HDF5 file {h5_path}...',end='')
-    events = np.loadtxt(events_path, dtype=np.int64)
+    print(f'loading events from {events_path} ...')
+    # using converter dict is extremely slow
+    # conv={
+    #     0: lambda x:int(1e6*float(x)),
+    #     1: lambda x:int(x),
+    #     2: lambda x:int(x),
+    #     3: lambda x:int(x),
+    # }
+    # events = np.loadtxt(events_path, dtype=np.int64,converters=converters)
+
+    def conv(x:str):
+        if b'.' in x:
+            v= int(1e6*float(x))
+        else:
+            v= int(x)
+        conv.event_counter+=1
+        if conv.event_counter%1000000==0:
+            print('.',end='')
+        return v
+    conv.event_counter=0
+    # conv = lambda x: int(1e6*float(x)) if x.contains('.') else int(x)
+    events = np.loadtxt(events_path, dtype=np.int64,converters=conv)
     # events is an Nx4 array, ts,x,y,polarity
-    print('checking range of polarities to ensure they are mapped to -1/OFF +1/ON values...')
+    ts0=events[0,0]
+    ts1=events[-1,0]
+    print(f'done loading {events.shape[0]:,} events spanning timestamp range {ts0:,}:{ts1:,} us')
+    print('checking for nonmonotonic timestamps')
+    dt=np.diff(events[:,0])
+    if np.any(dt<0):
+        raise ValueError(f'detected nonmonotonic timestamp at indices {np.where(dt<0)}')
+    print('checking range of polarities to ensure they are mapped to -1/OFF +1/ON values.')
     p_min=np.min(events[:,2]) # find min polarity value
     if p_min==0:
         events01=True
@@ -48,16 +76,15 @@ for aedat_name in tqdm(list):
         events01=False
     else:
         raise ValueError(f'the minimum polarity value {p_min} is not 0 or -1')
-    print(f'done loading events from {events_path}, minimum polarity value detected as {p_min}')
-    # print('removing nonmonotonic events at start')
-    print('rescaling timestamps to seconds')
-    events = events * [1e6, 1, 1, 1] # convert us to seconds
+    print(f'done loading events from {events_path}, minimum polarity value detected as {p_min}.')
+    # print('rescaling timestamps to microseconds from source seconds.')
+    # events = events * [1e6, 1, 1, 1] # convert s to us
     if not events01:
-        print('remapping polarity values from values (-1,+1) to values (0,1)')
+        print('remapping polarity values from values (-1,+1) to values (0,1)...',end='')
         events[:,2]=(events[:,2]+1)/2
+        print('done.')
     events = (events - [0, 0, 259, 0]) * [1, 1, -1, 1] # flip y axis upside down since jAER uses LL corner for pixel 0,0
     events = events.astype(np.uint32)
-    print('done')
     print('--------- events ------------')
     print(f'events.shape={events.shape} events.dtype={events.dtype}')
 
@@ -79,7 +106,7 @@ for aedat_name in tqdm(list):
 
     # read timestamp
     print(f'reading timestamps from {timestamp_path}')
-    frame_ts = np.loadtxt(timestamp_path, dtype=np.uint32, skiprows=13)
+    frame_ts = np.loadtxt(timestamp_path, dtype=np.uint32, skiprows=13,comments='#')
     frame_ts = frame_ts[2::2, 1]
     print('--------- frame_ts ------------')
     print(frame_ts.shape)
