@@ -132,7 +132,7 @@ for aedat_name in tqdm(list):
 
     # write to hdf5 file
     output = h5py.File(h5_path, 'w')
-    output.create_dataset('/events', data=events, chunks=True)
+    output.create_dataset('/events', data=events, chunks=True) # note that raw events are stored here, voxel grid DNN inputs are created on the fly by the DataLoader
     output.create_dataset('/frame', data=frame, chunks=True)
     output.create_dataset('/frame_idx', data=frame_idx, chunks=True)
     output.create_dataset('/frame_ts', data=frame_ts, chunks=True)

@@ -15,8 +15,6 @@ from queue import Empty
 
 import socket
 
-import cv2
-import numpy as np
 from thop import profile, clever_format
 
 from globals_and_utils import *
@@ -26,7 +24,8 @@ from pathlib import Path
 import torch
 
 from train.events_contrast_maximization.utils.event_utils import events_to_voxel_torch
-from train.utils.util import torch2cv2, torch2numpy, numpy2cv2
+from train.utils.render_e2p_output import render_e2p_output
+from train.utils.util import torch2numpy, numpy2cv2
 from easygui import fileopenbox
 from utils.prefs import MyPreferences
 prefs=MyPreferences()
@@ -39,7 +38,7 @@ try:
 except Exception as e:
     print(e)
 
-# from my_inference.py
+# from player.py
 import e2p as model_arch
 from train.utils.henri_compatible import make_henri_compatible
 from train.parse_config import ConfigParser
@@ -137,7 +136,6 @@ def consumer(queue:Queue):
                 print(f'decrased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
             elif k == ord('='): # change mask level for displaying AoLP
                 args.dolp_aolp_mask_level/= .9
-                print(f'increased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
                 print(f'increased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
             elif k==ord('e'): # reset network state
                 log.info('resetting E2P state')
@@ -266,6 +264,7 @@ def consumer(queue:Queue):
                     last_frame_number = frame_number
                     # voxel_float32 = ((1. / 255) * np.array(voxel, dtype=np.float32)) * 2 - 1 # map 0-255 range to -1,+1 range
                     # voxel_five_float32[:, bin, :, :] = voxel.astype(np.float32)
+                    # for UDP, convert voxel frame from uint8 as well as possible, since producer mapped to uint8 with inverse of following
                     voxel_five_float32[:, bin, :, :] = ((frame_255.astype(np.float32)) / 255) * (frame_max - frame_min) + frame_min
                     c += 1
             if c == NUM_BINS:
@@ -273,7 +272,7 @@ def consumer(queue:Queue):
                     input = torch.from_numpy(voxel_five_float32).to(device)
                     if not args.use_firenet:  # e2p, just use voxel grid from producer
                         output = model(input)
-                        intensity, aolp, dolp = compute_e2p_output(model, output, args, brightness) # output are RGB images with gray, HSV, and HOT coding
+                        intensity, aolp, dolp = render_e2p_output(output, args.dolp_aolp_mask_level, brightness) # output are RGB images with gray, HSV, and HOT coding
                         if frames_without_drop>0 and args.reset_period>0 and frames_without_drop%args.reset_period==0:
                             reset_e2p_state(args,model)
                     else:  # firenet, we need to extract the 4 angle channels and run firenet on each one
@@ -336,7 +335,7 @@ def get_timestr():
 def print_key_help(args):
     """Print keyboard help."""
     print(f'**********************\nproducer keys to use in cv2 image window:\n'
-          '- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
+          f'- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
           'h or ?: print this help\n'
           'p: print timing info\n'
           'o: open recording numpy file to play back\n'
@@ -440,42 +439,6 @@ def norm_max_min(v):
     return v
 
 
-def compute_e2p_output(model, output, args, brightness):
-    """ Computes intensity, aolp, dolp outputs from  E2P output.
-    :param output: DNN output
-    :param args: the program arguments
-    :param brightness: modified brightness of intensity channel, nominally 1.0, multiplies
-    :returns: intensity, aolp, dolp
-        the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
-        RGB color 2d images for cv2.imshow to render
-    """
-    intensity = torch2cv2(output['i'])*brightness
-    # compute aolp mod 1 to unwrap the wrapped AoLP
-    # aolp = torch2cv2(output['a']%1) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
-    aolp = torch2cv2(output['a']) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
-    dolp = torch2cv2(output['d'])
-    aolp_mask=np.where(dolp<args.dolp_aolp_mask_level*255)
-
-    # find the DoLP values that are less than mask value and use them to mask out the AoLP values so they show up as black
-
-
-    # #visualizing aolp, dolp on tensorboard, tensorboard takes rgb values in [0,1]
-    # this makes visualization work correctly in tensorboard.
-    # a lot of ugly formatting things to make cv2 output compatible with matplotlib.
-    # first scale to [0,255] then convert to colormap_hsv,
-    # then swap axis to make bgr to rgb otherwise the color is reversed.
-    # then last convert the rgb color back to [0,1] for tensorboard....
-    # imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(pred_aolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HSV), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
-    # imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(pred_dolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HOT), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
-
-    # https://stackoverflow.com/questions/50963283/imshow-doesnt-need-convert-from-bgr-to-rgb
-    # no need to convert since we use cv2 to render to screen
-    # intensity = norm_max_min(intensity)
-    intensity = np.repeat(intensity[:, :, None], 3, axis=2).astype(np.uint8) # need to duplicate mono channels to make compatible with aolp and dolp
-    aolp = cv2.applyColorMap(aolp, cv2.COLORMAP_HSV)
-    aolp[aolp_mask]=0
-    dolp = cv2.applyColorMap(dolp, cv2.COLORMAP_HOT)
-    return intensity, aolp, dolp
 
 
 def load_selected_model(args, device):
@@ -499,7 +462,6 @@ def load_selected_model(args, device):
             raise FileNotFoundError(f'model --checkpoint_path={args.checkpoint_path} does not exist. Maybe you used single quote in args? Use double quote.')
         log.info(f'loading checkpoint model path from {checkpoint_path} with torch.load()')
         from train.parse_config import ConfigParser
-        import parse_config
         checkpoint = torch.load(checkpoint_path)
         # args, checkpoint = legacy_compatibility(args, checkpoint)
         model = load_e2p_model(checkpoint,device)

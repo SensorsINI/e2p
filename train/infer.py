@@ -32,7 +32,7 @@ def main(args):
         h = 480
         w = 640
 
-    call_with_args = 'python my_inference.py --checkpoint_path {} --height {} --width {} --device 0 --events_file_path {} --output_folder {}/{}'.format(
+    call_with_args = 'python player.py --checkpoint_path {} --height {} --width {} --device 0 --events_file_path {} --output_folder {}/{}'.format(
         h, w, ckpt_path, input_path, output_dir, name)
 
     print(call_with_args)

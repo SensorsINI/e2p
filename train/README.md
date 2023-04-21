@@ -52,18 +52,21 @@ Unzip E2PD.zip to ./data/ folder
 ### Recording Data using PDAVIS
 - Using PDAVIS with jAER to record aedat2 files and save them at ./data/new/real/
 - The recording should end with the extention _.aedat_
-- Modify [my_extract_events.py](my_extract_events.py) to point _root=XXX_ to your folder where you stored the new .aedat file(s)
-- Modify [my_extract_aps.py](my_extract_aps.py) to point _root_ variable to your same data folder and _jaer_ variable to your installed jaer folder. Then extract PDAVIS frames with
+
+[//]: # (- Modify [my_extract_events.py]&#40;my_extract_events.py&#41; to point _root=XXX_ to your folder where you stored the new .aedat file&#40;s&#41;. Then run it with)
+
+[//]: # (  - `python my_extract_events.py`)
+- Modify [my_extract_aps.py](my_extract_aps.py) to point _root_ variable to your same data folder and _jaer_ variable to your installed jaer folder. Then extract PDAVIS APS frames using jaer script d*vs-slice-avi-writer.sh*
   - `python my_extract_aps.py`
-- manually extract PDAVIS events from jaer using EventFilter DavisTextOutputWriter; see https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/#bookmark=id.9xld1vw3ttt0
+- manually extract PDAVIS events from jaer using EventFilter DavisTextOutputWriter; see [jaer user guide](https://docs.google.com/document/d/1fb7VA8tdoxuYqZfrPfT46_wiT1isQZwTHgX8O22dJ0Q/#bookmark=id.9xld1vw3ttt0).
   -  Set the options "rewindBeforeRecording", "dvsEvents", and "closeOnRewind". Leave "useSignedPolarity" unselected.
   - Click the "StartRecordingAndSaveAs" button and choose output file with _-events.txt_ extension; you can select the ./data/new/real/...timecode.txt file and delete the timecode part.
-    - (** Because of bug in DavisTextOutputWriter, it is essential to open the output _xxx-events.txt_ and delete the first _n_ rows as they are duplicated. __n__ will be large number of perhaps 10k lines! **. If you don't do this you will get bogus timestamps that mess up the synchronization between events and frames and the training will have meaningless GT target.)
+    - (** Because of bug in _DavisTextOutputWriter_, it is essential to open the output _xxx-events.txt_ and delete the first _n_ rows as they are duplicated. __n__ will be large number of perhaps 10k lines! **. If you don't do this you will get bogus timestamps that mess up the synchronization between events and frames and the training will have meaningless GT target.)
     - (** To find how many rows are duplicated, we can check the timestamp of the first frame in xxx-timecode.txt and then use this timestamp to find where the timestamp discontinuity appears in xxx-events.txt **)
     - ![write-events-txt-file.png](media%2Fwrite-events-txt-file.png)
 - Modify [my_video2frame.py](my_video2frame.py) as above to point to correct data folder, and then convert avi to frames with
   - `python my_video2frame.py`
-- Use [my_merge_h5.py](my_merge_h5.py) to merge events, frame, frame_idx, frame_ts, intensity, aolp, dolp into one hdf5 file for the use of DNN with the below command. (It will open a directory chooser for you.) 
+- Use [my_merge_h5.py](my_merge_h5.py) to merge _events_, _frame_, _frame_idx_, _frame_ts_, _intensity_, _aolp_, _dolp_ into one hdf5 file for the use of DNN with the below command. (It will open a directory chooser for you to select the folder where you are working on is.) 
   - `python my_merge_h5.py`
 - create train/test list txt with [my_create_real_list.py](my_create_real_list.py)
   - `python my_create_real_list.py`

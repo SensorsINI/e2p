@@ -40,4 +40,4 @@ for name in tqdm(aedat_list):
         for event in events:
             f.write(f"{event[0]}\t{event[1]}\t{event[2]}\t{event[3]}\n")
 
-print('Succeed!')
+print(f'Done extracting events from {aedat_list}!')
