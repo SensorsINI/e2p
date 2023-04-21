@@ -22,6 +22,7 @@ from tqdm import tqdm
 from thop import profile
 # from thop import clever_format
 from engineering_notation import EngNumber as eng # only from pip
+
 from utils.prefs import MyPreferences
 prefs=MyPreferences()
 from utils.get_logger import get_logger
@@ -149,12 +150,12 @@ def main(args):
     if not args.quiet:  # show video
         cv2.namedWindow('pdavis',cv2.WINDOW_NORMAL)
     recording_activated=False
-
+    frame_interval_ms=100
     # https://stackoverflow.com/questions/53570732/get-single-random-example-from-pytorch-dataloader/61389393#61389393
     # for item in tqdm(data_loader):
     with tqdm(total=n_samples) as pbar:
         while True:
-            k = cv2.waitKey(100) & 0xFF
+            k = cv2.waitKey(frame_interval_ms) & 0xFF
             if k == 27 or k == ord('x'):  # ESC or 'x' exits
                 print('quitting...')
                 cv2.destroyAllWindows()
@@ -172,6 +173,12 @@ def main(args):
                 reset_e2p_network(model)
                 pbar.reset(-1)
                 continue
+            elif k == ord('f'):
+                frame_interval_ms = int(decrease(frame_interval_ms, 4))
+                print(f'shorter frame intervals is now {frame_interval_ms:.2f}ms')
+            elif k == ord('s'):
+                frame_interval_ms = int(increase(frame_interval_ms, 1000))
+                print(f'longer frame intervals is now {frame_interval_ms:.2f}ms')
             elif k==ord('o'):
                 events_file_path=get_events_file_path()
                 if events_file_path is None:
@@ -270,8 +277,8 @@ def main(args):
             # dolp_gt=(torch.squeeze(item['dolp']).numpy() * 255).astype(np.uint8)
             intensity_gt,aolp_gt,dolp_gt=render_e2p_output(gt, args.dolp_aolp_mask_level, 1.0)
             iad_gt = cv2.hconcat([intensity_gt,aolp_gt,dolp_gt])
-            mycv2_put_text(iad_gt, f'GT fr:{frame_number:,}')
-            mycv2_put_text(iad, 'E2P')
+            mycv2_put_text(iad_gt, f'GT fr:{frame_number:,}',fontScale=1.5,org=(10,20))
+            mycv2_put_text(iad, 'E2P',fontScale=1.5,org=(10,20))
 
             iad_both = cv2.vconcat([iad_gt, iad])
             if recording_activated:
@@ -335,6 +342,11 @@ def reset_e2p_network(model):
     model.reset_states_a()
     model.reset_states_d()
 
+SPEED_UP_FACTOR=2
+def increase(val,limit):
+    return val*SPEED_UP_FACTOR if val*SPEED_UP_FACTOR<=limit else limit
+def decrease(val,limit):
+    return val/SPEED_UP_FACTOR if val/SPEED_UP_FACTOR>=limit else limit
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Template')
