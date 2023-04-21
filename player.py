@@ -30,7 +30,7 @@ log=get_logger(__name__)
 # import math
 from pathlib import Path
 
-from globals_and_utils import DOLP_AOLP_MASK_LEVEL
+from globals_and_utils import DOLP_AOLP_MASK_LEVEL, mycv2_put_text
 # for run original model
 # from model_ori.model import *
 # from model_ori import model as model_arch
@@ -98,8 +98,6 @@ def load_model(checkpoint):
 
     model = model.to(device)
     model.eval()
-    # if args.color:
-    #     model = ColorNet(model)
     for param in model.parameters():
         param.requires_grad = False
 
@@ -124,8 +122,6 @@ def main(args):
         print('no file specified, quitting')
         quit(0)
     log.info(f'playing file "{events_file_path}"')
-    output_folder = os.path.join(args.output_folder,events_file_path.stem)
-    ts_fname = setup_output_folder(output_folder) # create folder and timestamps file in it
 
     data_loader, dataset = open_dataset(args, events_file_path)
     n_samples = len(dataset)
@@ -152,6 +148,7 @@ def main(args):
     forwards=True # what direction to go
     if not args.quiet:  # show video
         cv2.namedWindow('pdavis',cv2.WINDOW_NORMAL)
+    recording_activated=False
 
     # https://stackoverflow.com/questions/53570732/get-single-random-example-from-pytorch-dataloader/61389393#61389393
     # for item in tqdm(data_loader):
@@ -184,6 +181,15 @@ def main(args):
                 frame_number=-1
                 pbar.reset(n_samples)
                 continue
+            elif k == ord('l'):
+                if not recording_activated:
+                    recording_activated = True
+                    output_folder = os.path.join(args.output_folder, events_file_path.stem)
+                    ts_fname = setup_output_folder(output_folder)  # create folder and timestamps file in it
+                    log.info(f'started logging recording PNG frames to folder {output_folder}')
+                else:
+                    recording_activated = False
+                    log.info(f'stopped logging recording PNG frames to folder {output_folder}')
             elif k==ord('e'):
                 reset_e2p_network(model)
             elif k == ord('-'):
@@ -198,6 +204,7 @@ def main(args):
                       'r: rewind\n'
                       'b: toggle direction backwards/forwards\n'
                       'o: open a new h5 to play back\n'
+                      'l: toggle logging (recording) frames to disk'
                       'e: rEset E2P hidden states\n'
                       f'- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
                       '? or h: print this help'
@@ -209,11 +216,17 @@ def main(args):
             if frame_number>=n_samples:
                 print('rewound')
                 frame_number=-1
+                if recording_activated:
+                    log.info(f'stopped logging recording frames to {output_folder}')
+                    recording_activated=False
                 continue
             if frame_number<0:
                 print('done going backwards, changed to forwards')
                 forwards=True
                 frame_number=-1
+                if recording_activated:
+                    log.info(f'stopped logging recording frames to {output_folder}')
+                    recording_activated=False
                 continue
 
             pbar.update(1 if forwards else -1)
@@ -246,7 +259,6 @@ def main(args):
             # aolp = torch2cv2(output['a'])
             # dolp = torch2cv2(output['d'])
             intensity,aolp,dolp=render_e2p_output(output, args.dolp_aolp_mask_level, 1.0)
-            iad_name = '{:05d}.png'.format(frame_number)
             iad = cv2.hconcat([intensity, aolp, dolp])
             # iad_f = cv2.hconcat([intensity_f, aolp_f, dolp_f])
             gt={}
@@ -258,13 +270,21 @@ def main(args):
             # dolp_gt=(torch.squeeze(item['dolp']).numpy() * 255).astype(np.uint8)
             intensity_gt,aolp_gt,dolp_gt=render_e2p_output(gt, args.dolp_aolp_mask_level, 1.0)
             iad_gt = cv2.hconcat([intensity_gt,aolp_gt,dolp_gt])
+            mycv2_put_text(iad_gt, f'GT fr:{frame_number:,}')
+            mycv2_put_text(iad, 'E2P')
+
             iad_both = cv2.vconcat([iad_gt, iad])
-            cv2.imwrite(join(output_folder, iad_name), iad_both)
+            if recording_activated:
+                iad_name = '{:05d}.png'.format(frame_number)
+                cv2.imwrite(join(output_folder, iad_name), iad_both)
+                print('.', end='')
+                append_timestamp(ts_fname, iad_name, item['timestamp'].item())
+                if frame_number % 80 == 0:
+                    print('')
             if not args.quiet: # show video
                 cv2.namedWindow('pdavis')
                 cv2.imshow('pdavis',iad_both)
 
-            append_timestamp(ts_fname, iad_name, item['timestamp'].item())
 
 
     log.info(f"\n{args.checkpoint_path}'s average inference time Is : {eng(mean(time_list) * 1000)} ms")
@@ -332,12 +352,8 @@ if __name__ == '__main__':
                         help='sensor resolution: width')
     parser.add_argument('--device', default='0', type=str,
                         help='indices of GPUs to enable')
-    parser.add_argument('--is_flow', action='store_true',
-                        help='If true, save output to flow npy file')
     parser.add_argument('--update', action='store_true',
                         help='Set this if using updated models')
-    parser.add_argument('--color', action='store_true', default=False,
-                        help='Perform color reconstruction')
     parser.add_argument('--voxel_method', default='between_frames', type=str,
                         help='which method should be used to form the voxels',
                         choices=['between_frames', 'k_events', 't_seconds'])
