@@ -127,6 +127,37 @@ class mse_loss():
     def __call__(self, pred, target):
         return self.weight * self.loss(pred, target)
 
+class mse_loss_aolp():
+    def __init__(self, weight=1.0):
+        self.loss = F.mse_loss
+        self.weight = weight
+
+    def __call__(self, pred, target):
+        return self.weight * self.loss(pred, target)
+
+class mse_circular_loss():
+    def __init__(self, weight=1.0):
+        self.weight = weight
+    
+    def loss(self, pred, target):
+        return torch.mean(2-2*(torch.cos(pred - target)))
+
+    def __call__(self, pred, target):
+        mse_circular = self.loss(pred, target)
+        return self.weight * mse_circular
+
+class abs_sin_loss():
+    def __init__(self, weight=1.0):
+        self.weight = weight
+    
+    def loss(self, pred, target):
+        pred = pred*np.pi
+        target = target*np.pi
+        return torch.mean(torch.abs(torch.sin(pred - target)))  #changing it to -pi/2 to pi/2 first
+
+    def __call__(self, pred, target):
+        abs_sin_loss = self.loss(pred, target)
+        return self.weight * abs_sin_loss
 
 class l2_dw_loss():
     def __init__(self, weight=1.0):
