@@ -1110,7 +1110,8 @@ class Trainer_P(BaseTrainer):
 
             # get polarization from dataloader directly
             events, intensity, aolp, dolp, flow = self.to_device(item)
-
+            # print(f"aolp min:{aolp.min()} aolp max:{aolp.max()}")
+            # print(f'events shape:{events.shape} max:{events.max()} min:{events.min()}')
             # print('----')
             # f0 = events[0, 0, :, :].cpu().numpy()
             # print(np.max(f0), np.min(f0))
@@ -1152,8 +1153,14 @@ class Trainer_P(BaseTrainer):
                     losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp, normalize=True))
                 if loss_name == 'mse_loss':
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
-                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
+                    # losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
                     losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp))
+                if loss_name == 'mse_loss_aolp':
+                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
+                if loss_name == 'abs_sin_loss':
+                    # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
+                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
+                    # losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp))
                 if loss_name == 'ssim_loss':
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
                     losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
@@ -1300,7 +1307,7 @@ class Trainer_P(BaseTrainer):
         log = self.train_metrics.result()
 
         print("validation")
-        if self.do_validation and epoch % 10 == 0:
+        if self.do_validation and (epoch - 1) % self.save_period == 0:
             with torch.no_grad():
                 val_log = self._valid_epoch(epoch)
                 log.update(**{'val_' + k: v for k, v in val_log.items()})
@@ -1472,7 +1479,6 @@ class Trainer_P(BaseTrainer):
         if torch.numel(negative_non_zero_voxel) == 0:
             negative_non_zero_voxel = 0
         self.writer.add_histogram(f'{tag_prefix}_input/negative', negative_non_zero_voxel)
-
         self.writer.add_histogram(f'{tag_prefix}_flow/prediction', torch.stack(pred_flows))
         self.writer.add_histogram(f'{tag_prefix}_intensity/prediction', torch.stack(pred_intensities))
         self.writer.add_histogram(f'{tag_prefix}_aolp/prediction', torch.stack(pred_aolps))
@@ -1577,6 +1583,14 @@ class Trainer_RP(BaseTrainer):
                     losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp, normalize=True))
                     losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp, normalize=True))
                 if loss_name == 'mse_loss':
+                    losses[f'i90/{loss_name}'].append(loss_ftn(pred['i90'], i90))
+                    losses[f'i45/{loss_name}'].append(loss_ftn(pred['i45'], i45))
+                    losses[f'i135/{loss_name}'].append(loss_ftn(pred['i135'], i135))
+                    losses[f'i0/{loss_name}'].append(loss_ftn(pred['i0'], i0))
+                    losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
+                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
+                    losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp))
+                if loss_name == 'abs_sin_loss':
                     losses[f'i90/{loss_name}'].append(loss_ftn(pred['i90'], i90))
                     losses[f'i45/{loss_name}'].append(loss_ftn(pred['i45'], i45))
                     losses[f'i135/{loss_name}'].append(loss_ftn(pred['i135'], i135))
