@@ -136,7 +136,7 @@ def main(args):
     # for item in tqdm(data_loader):
     with tqdm(total=n_samples) as pbar:
         while True:
-            k = cv2.waitKey(frame_interval_ms) & 0xFF
+            k = cv2.waitKey(frame_interval_ms) & 0xFF # mask out modifiers if any
             # https://stackoverflow.com/questions/75030061/python-opencv-waitkeyex-stops-picking-up-arrow-keys-after-mouse-click-or-tab
             if k == 27 or k == ord('x'):  # ESC or 'x' exits
                 print('quitting...')
