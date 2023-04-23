@@ -88,9 +88,10 @@ This method splits to 2 terminal processes but is limited to smaller frame size 
     python -m consumer
     ```
 #### Using [player](player.py)  to play back a dataset h5 file
-    ```bash
-    python -m player
-    ```
+    
+  ```bash
+  python -m player
+  ```
 
 ### 4. Results
 

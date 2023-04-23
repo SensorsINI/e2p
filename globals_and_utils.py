@@ -110,8 +110,9 @@ UDP_BUFFER_SIZE = int(math.pow(2, math.ceil(math.log(IMSIZE * IMSIZE + 1000) / m
 
 USE_FIRENET=False # True to use firenet DNN from Cedric, False to use e2p DNN
 # E2P_MODEL= 'models/0326_033239_with_circular_aolp_loss_150ep.pth' # 'models/0326_212403_with_circular_aolp_loss_150ep.pth' # 'models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth' # 'models/e2ptobi-data.pth' #'./e2p-cvpr2023.pth'
-E2P_MODEL= 'models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth' # 'models/e2ptobi-data.pth' #'./e2p-cvpr2023.pth'
+# E2P_MODEL= 'models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth' # 'models/e2ptobi-data.pth' #'./e2p-cvpr2023.pth'
 # E2P_MODEL= 'models/0418_090002_with_abs_sin_correct_scale_aolp_150ep.pth' # 'models/e2ptobi-data.pth' #'./e2p-cvpr2023.pth'
+E2P_MODEL='models/0326_033239_with_circular_aolp_loss_150ep.pth' # tobi thinks this one is best with the large rectangular filter and the filter wheel (although it blurs it quite a bit)
 FIRENET_MODEL='./firenet/ckpt/firenet_1000.pth.tar'
 
 import signal

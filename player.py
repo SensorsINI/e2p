@@ -17,11 +17,13 @@ from easygui import fileopenbox
 from numpy import mean
 from os.path import join
 import os
+import sys
 import cv2
 from tqdm import tqdm
 from thop import profile
 # from thop import clever_format
 from engineering_notation import EngNumber as eng # only from pip
+
 from utils.prefs import MyPreferences
 prefs=MyPreferences()
 from utils.get_logger import get_logger
@@ -58,43 +60,26 @@ model_info = {}
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def legacy_compatibility(args, checkpoint):
-    assert not (args.e2vid and args.firenet_legacy)
-    if args.e2vid:
-        args.legacy_norm = True
-        final_activation = 'sigmoid'
-    elif args.firenet_legacy:
-        args.legacy_norm = True
-        final_activation = ''
-    else:
-        return args, checkpoint
-    # Make compatible with Henri saved models
-    if not isinstance(checkpoint.get('config', None), ConfigParser) or args.e2vid or args.firenet_legacy:
-        checkpoint = make_henri_compatible(checkpoint, final_activation)
-    if args.firenet_legacy:
-        checkpoint['config']['arch']['type'] = 'FireNet_legacy'
-    return args, checkpoint
-
-
-def load_model(checkpoint):
+def load_model(args):
+    checkpoint = torch.load(args.checkpoint_path)
     config = checkpoint['config']
-    print(config['arch'])
-    state_dict = checkpoint['state_dict']
+    log.info(f"config['arch']={config['arch']}")
 
     try:
         model_info['num_bins'] = config['arch']['args']['unet_kwargs']['num_bins']
-        print(model_info['num_bins'])
     except KeyError:
         model_info['num_bins'] = config['arch']['args']['num_bins']
-    logger = config.get_logger('test')
+    log.info(f"model_info['num_bins']={model_info['num_bins']}")
+    # logger = config.get_logger('test')
 
     # build model architecture
     model = config.init_obj('arch', model_arch)
-    logger.info(model)
+    log.info(f"model={model}")
     if config['n_gpu'] > 1:
         model = torch.nn.DataParallel(model)
+    state_dict = checkpoint['state_dict']
     model.load_state_dict(state_dict)
-    print('Load my trained weights succeed!')
+    log.info('Load my trained weights succeeded!')
 
     model = model.to(device)
     model.eval()
@@ -114,6 +99,7 @@ def minmax_normalization(image, device):
 
 
 def main(args):
+    sys.path.append('train')  # needed to get model to load using torch.load with train.parse_config ConfigParser.. don't understand why
     if args.events_file_path is None:
         events_file_path = get_events_file_path()
     else:
@@ -134,12 +120,8 @@ def main(args):
     if args.device is not None:
         os.environ['CUDA_VISIBLE_DEVICES'] = args.device
     log.info('Loading checkpoint: {} ...'.format(args.checkpoint_path))
-    import sys
-    sys.path.append('train')  # needed to get model to load using torch.load with train.parse_config ConfigParser.. don't understand why
 
-    checkpoint = torch.load(args.checkpoint_path)
-    args, checkpoint = legacy_compatibility(args, checkpoint)
-    model = load_model(checkpoint)
+    model = load_model(args)
 
     reset_e2p_network(model)
     frame_number = -1
@@ -149,12 +131,13 @@ def main(args):
     if not args.quiet:  # show video
         cv2.namedWindow('pdavis',cv2.WINDOW_NORMAL)
     recording_activated=False
-
+    frame_interval_ms=100
     # https://stackoverflow.com/questions/53570732/get-single-random-example-from-pytorch-dataloader/61389393#61389393
     # for item in tqdm(data_loader):
     with tqdm(total=n_samples) as pbar:
         while True:
-            k = cv2.waitKey(100) & 0xFF
+            k = cv2.waitKey(frame_interval_ms) & 0xFF # mask out modifiers if any
+            # https://stackoverflow.com/questions/75030061/python-opencv-waitkeyex-stops-picking-up-arrow-keys-after-mouse-click-or-tab
             if k == 27 or k == ord('x'):  # ESC or 'x' exits
                 print('quitting...')
                 cv2.destroyAllWindows()
@@ -172,6 +155,18 @@ def main(args):
                 reset_e2p_network(model)
                 pbar.reset(-1)
                 continue
+            elif k==ord('['):
+                frame_number-=20
+                print(f'jogged backwards to {frame_number}')
+            elif k==ord(']'):
+                frame_number+=20
+                print(f'jogged forwards to {frame_number}')
+            elif k == ord('f'):
+                frame_interval_ms = int(decrease(frame_interval_ms, 4))
+                print(f'shorter frame intervals is now {frame_interval_ms:.2f}ms')
+            elif k == ord('s'):
+                frame_interval_ms = int(increase(frame_interval_ms, 1000))
+                print(f'longer frame intervals is now {frame_interval_ms:.2f}ms')
             elif k==ord('o'):
                 events_file_path=get_events_file_path()
                 if events_file_path is None:
@@ -198,17 +193,31 @@ def main(args):
             elif k == ord('='):  # change mask level for displaying AoLP
                 args.dolp_aolp_mask_level /= .9
                 print(f'increased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
+            elif k==ord('m'):
+                lastmodel = prefs.get('last_model_selected', 'models/*.pth')
+                f = fileopenbox(msg='select model checkpoint', title='Model checkpoint', default=lastmodel,
+                                filetypes=['*.pth'])
+                if f is not None:
+                    prefs.put('last_model_selected', f)
+                    args.checkpoint_path = f
+                    model=load_model(args)
+                    print(f'changed model to {args.checkpoint_path}')
             elif k==ord('h') or k==ord('?'):
                 print('ESC or x: exit\n'
                       'space: toggle pause\n'
                       'r: rewind\n'
                       'b: toggle direction backwards/forwards\n'
+                      's or f: slower or faster playback\n'
+                      '[ or ]: jog backwards or forwards\n'
                       'o: open a new h5 to play back\n'
+                      'm: load a new E2P network model\n'
                       'l: toggle logging (recording) frames to disk'
-                      'e: rEset E2P hidden states\n'
                       f'- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
+                      'e: rEset E2P hidden states\n'
                       '? or h: print this help'
                       )
+            elif k!=255:
+                print(f'unknown key {k}')
             if paused:
                 continue
 
@@ -270,8 +279,8 @@ def main(args):
             # dolp_gt=(torch.squeeze(item['dolp']).numpy() * 255).astype(np.uint8)
             intensity_gt,aolp_gt,dolp_gt=render_e2p_output(gt, args.dolp_aolp_mask_level, 1.0)
             iad_gt = cv2.hconcat([intensity_gt,aolp_gt,dolp_gt])
-            mycv2_put_text(iad_gt, f'GT fr:{frame_number:,}')
-            mycv2_put_text(iad, 'E2P')
+            mycv2_put_text(iad_gt, f'GT fr:{frame_number:,}/{n_samples:,}',fontScale=1.5,org=(10,20))
+            mycv2_put_text(iad, 'E2P',fontScale=1.5,org=(10,20))
 
             iad_both = cv2.vconcat([iad_gt, iad])
             if recording_activated:
@@ -335,6 +344,11 @@ def reset_e2p_network(model):
     model.reset_states_a()
     model.reset_states_d()
 
+SPEED_UP_FACTOR=2
+def increase(val,limit):
+    return val*SPEED_UP_FACTOR if val*SPEED_UP_FACTOR<=limit else limit
+def decrease(val,limit):
+    return val/SPEED_UP_FACTOR if val/SPEED_UP_FACTOR>=limit else limit
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Template')
