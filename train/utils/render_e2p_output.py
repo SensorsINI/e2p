@@ -4,7 +4,7 @@ import torch
 
 from train.utils import torch2cv2
 
-def render_e2p_output(output, dolp_aolp_mask_level, brightness):
+def render_e2p_output(output, dolp_aolp_mask_level=0.2, brightness=1.0,median_angle_display=True):
     """ Computes intensity, aolp, dolp output color images from  E2P output.
     :param output: DNN output
     :param dolp_aolp_mask_level: values of AoLP are set to zero when the DoLP is less than this value (0-1)
@@ -21,7 +21,9 @@ def render_e2p_output(output, dolp_aolp_mask_level, brightness):
     aolp_mask=np.where(dolp<dolp_aolp_mask_level*255) #2d array with 1 where aolp is valid, 0 otherwise
     aolp_mask_torch=output['d'].ge(dolp_aolp_mask_level)
     # compute median angle in radians, with zero being *vertical* polarization
-    median_aolp_angle=compute_median_aolp(torch.squeeze(output['a']),aolp_mask_torch).cpu().numpy().item()
+    median_aolp_angle=0
+    if median_angle_display:
+        median_aolp_angle=compute_median_aolp(torch.squeeze(output['a']),aolp_mask_torch).cpu().numpy().item()
 
     # #visualizing aolp, dolp on tensorboard, tensorboard takes rgb values in [0,1]
     # this makes visualization work correctly in tensorboard.
@@ -43,7 +45,7 @@ def render_e2p_output(output, dolp_aolp_mask_level, brightness):
 
 
     # draw the median AoLP angle on top of HSV AoLP image
-    if not np.isnan(median_aolp_angle):
+    if median_angle_display and not np.isnan(median_aolp_angle):
         line_thickness = 2
         half_line_length=50
         line_color=(200, 200, 200)

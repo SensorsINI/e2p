@@ -75,6 +75,7 @@ def consumer(queue:Queue):
     cv2.waitKey(100)
 
     brightness=prefs.get('brightness',1.0)
+    median_angle_display=True
 
     if queue is None:
         log.info('opening UDP port {} to receive frames from producer'.format(PORT))
@@ -134,6 +135,9 @@ def consumer(queue:Queue):
             elif k == ord('-'):
                 args.dolp_aolp_mask_level*= .9
                 print(f'decrased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
+            elif k==ord('a'):
+                median_angle_display=not median_angle_display
+                print(f'median_angle_display={median_angle_display}')
             elif k == ord('='): # change mask level for displaying AoLP
                 args.dolp_aolp_mask_level/= .9
                 print(f'increased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
@@ -272,7 +276,7 @@ def consumer(queue:Queue):
                     input = torch.from_numpy(voxel_five_float32).to(device)
                     if not args.use_firenet:  # e2p, just use voxel grid from producer
                         output = model(input)
-                        intensity, aolp, dolp = render_e2p_output(output, args.dolp_aolp_mask_level, brightness) # output are RGB images with gray, HSV, and HOT coding
+                        intensity, aolp, dolp = render_e2p_output(output, args.dolp_aolp_mask_level, brightness,median_angle_display) # output are RGB images with gray, HSV, and HOT coding
                         if frames_without_drop>0 and args.reset_period>0 and frames_without_drop%args.reset_period==0:
                             reset_e2p_state(args,model)
                     else:  # firenet, we need to extract the 4 angle channels and run firenet on each one
@@ -341,6 +345,7 @@ def print_key_help(args):
           'o: open recording numpy file to play back\n'
           's or f: slow down (briefer frames) or speed up (longer frames) playback'
           'b or d: brighter or darker frames\n'
+          'a: toggle median angle display\n'
           'r: toggle recording on/off; see console output for timestamped output folder\n'
           f'e: reset E2P hidden state; it is currently reset every {args.reset_period} frames by --reset_period argument\n'
           'space: toggle pause\n'
