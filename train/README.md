@@ -91,7 +91,7 @@ Steps are illustrated below.
 
 #### Using tensorboard to visualize training
 
-On your localhost machine
+On your localhost machine, [start ssh to tunnel the tensorboard port](https://stackoverflow.com/questions/37987839/how-can-i-run-tensorboard-on-a-remote-server)
 ```
     ssh -N -f -L localhost:16006:localhost:6006 tobi@sensors-extreme.lan.ini.uzh.ch
 ```
