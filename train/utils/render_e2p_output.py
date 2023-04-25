@@ -15,9 +15,12 @@ def render_e2p_output(output, dolp_aolp_mask_level, brightness):
     intensity = torch2cv2(output['i'])*brightness
     dolp = torch2cv2(output['d'])
     a_chans=output['a']
-    a_sin=a_chans[:,[0],...]
-    a_cos=a_chans[:,[1],...]
-    aolp_01=torch.atan2(a_sin,a_cos)
+    if len(a_chans.shape)==4:
+        a_sin=a_chans[:,[0],...]
+        a_cos=a_chans[:,[1],...]
+        aolp_01=torch.atan2(a_sin,a_cos)
+    else: # gt gives us aolp directly
+        aolp_01=a_chans
     aolp=torch2cv2(aolp_01)
     # aolp = torch2cv2(output['a']) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
     # find the DoLP values that are less than mask value and use them to mask out the AoLP values so they show up as black

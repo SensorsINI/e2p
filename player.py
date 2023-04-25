@@ -92,6 +92,7 @@ def minmax_normalization(image, device):
 
 def main(args):
     sys.path.append('train')  # needed to get model to load using torch.load with train.parse_config ConfigParser.. don't understand why
+
     if args.events_file_path is None:
         events_file_path = get_events_file_path()
     else:
@@ -100,6 +101,9 @@ def main(args):
         print('no file specified, quitting')
         quit(0)
     log.info(f'playing file "{events_file_path}"')
+
+    if args.browse_checkpoint:
+        browse_checkpoint(args)
 
     data_loader, dataset = open_dataset(args, events_file_path)
     n_samples = len(dataset)
@@ -126,6 +130,7 @@ def main(args):
     frame_interval_ms=100
     # https://stackoverflow.com/questions/53570732/get-single-random-example-from-pytorch-dataloader/61389393#61389393
     # for item in tqdm(data_loader):
+    print_help(args)
     with tqdm(total=n_samples) as pbar:
         while True:
             k = cv2.waitKey(frame_interval_ms) & 0xFF # mask out modifiers if any
@@ -186,28 +191,10 @@ def main(args):
                 args.dolp_aolp_mask_level /= .9
                 print(f'increased AoLP DoLP mask level to {args.dolp_aolp_mask_level}')
             elif k==ord('m'):
-                lastmodel = prefs.get('last_model_selected', 'models/*.pth')
-                f = fileopenbox(msg='select model checkpoint', title='Model checkpoint', default=lastmodel,
-                                filetypes=['*.pth'])
-                if f is not None:
-                    prefs.put('last_model_selected', f)
-                    args.checkpoint_path = f
-                    model=load_model(args)
-                    print(f'changed model to {args.checkpoint_path}')
+                browse_checkpoint(args)
+                model=load_model(args.checkpoint_path)
             elif k==ord('h') or k==ord('?'):
-                print('ESC or x: exit\n'
-                      'space: toggle pause\n'
-                      'r: rewind\n'
-                      'b: toggle direction backwards/forwards\n'
-                      's or f: slower or faster playback\n'
-                      '[ or ]: jog backwards or forwards\n'
-                      'o: open a new h5 to play back\n'
-                      'm: load a new E2P network model\n'
-                      'l: toggle logging (recording) frames to disk'
-                      f'- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
-                      'e: rEset E2P hidden states\n'
-                      '? or h: print this help'
-                      )
+                print_help(args)
             elif k!=255:
                 print(f'unknown key {k}')
             if paused:
@@ -291,6 +278,36 @@ def main(args):
     log.info(f"\n{args.checkpoint_path}'s average inference time Is : {eng(mean(time_list) * 1000)} ms")
 
 
+def browse_checkpoint(args):
+    """ Browse for checkpoint model file. Sets a new args.checkpoint if a checkpoint is selcted.
+    :param args: the program arguments
+    """
+    lastmodel = prefs.get('last_model_selected', 'models/*.pth')
+    f = fileopenbox(msg='select model checkpoint', title='Model checkpoint', default=lastmodel,
+                    filetypes=['*.pth'])
+    if f is not None:
+        prefs.put('last_model_selected', f)
+        args.checkpoint_path = f
+        prefs.put('last_model_selected', f)
+        log.info(f'changed model to {args.checkpoint_path}')
+
+
+def print_help(args):
+    print('ESC or x: exit\n'
+          'space: toggle pause\n'
+          'r: rewind\n'
+          'b: toggle direction backwards/forwards\n'
+          's or f: slower or faster playback\n'
+          '[ or ]: jog backwards or forwards\n'
+          'o: open a new h5 to play back\n'
+          'm: load a new E2P network model\n'
+          'l: toggle logging (recording) frames to disk'
+          f'- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
+          'e: rEset E2P hidden states\n'
+          '? or h: print this help'
+          )
+
+
 def get_events_file_path():
     last_h5_folder = prefs.get('last_h5_folder', '')
     events_file_path = fileopenbox(msg='Select h5 dataset file', title='H5 chooser', filetypes=['*.h5'],
@@ -344,6 +361,7 @@ def decrease(val,limit):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Template')
+    parser.add_argument('--browse_checkpoint', action='store_true',help='Open file browser to choose checkpoint')
     parser.add_argument('--checkpoint_path', type=str, default='models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth',
                         help='path to latest checkpoint (default: None)')
     # parser.add_argument('--events_file_path', type=str, default='/mnt/c/Users/tobid/Downloads/Davis346B-2023-03-16T15-42-43+0100-00000000-0-pdavis-polfilter-tobi-office-window2.h5',

@@ -40,14 +40,6 @@ except Exception as e:
 
 # from player.py
 import e2p as model_arch
-from train.utils.henri_compatible import make_henri_compatible
-from train.parse_config import ConfigParser
-from multiprocessing import Queue
-
-sys.path.append('train') # needed to get model to load using torch.load with train.parse_config ConfigParser.. don't understand why
-
-
-
 def consumer(queue:Queue):
     """
     consume frames to predict polarization
@@ -316,6 +308,14 @@ def consumer(queue:Queue):
 
     print_timing_info()
     print(f'****** done running model {checkpoint_path}')
+from train.utils.henri_compatible import make_henri_compatible
+from train.parse_config import ConfigParser
+
+from multiprocessing import Queue
+
+
+
+sys.path.append('train') # needed to get model to load using torch.load with train.parse_config ConfigParser.. don't understand why
 ################### end of main
 
 def reset_e2p_state(args, model):
