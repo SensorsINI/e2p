@@ -127,10 +127,10 @@ def main(config):
 
 if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Training')
-    args.add_argument('-c', '--config', default='train/e2p.json', type=str,
-                      help='config file path (default: None)')
+    args.add_argument('-c', '--config', default=None, type=str,
+                      help='config file path, e.g. e2p-finetune.json (default: None)')
     args.add_argument('-r', '--resume', default=None, type=str,
-                      help='path to latest checkpoint (default: None)')
+                      help='path to latest checkpoint, e.g. ../models/e2p-0317_215454-e2p-paper_plus_tobi_office-from-scratch.pth (default: None)')
     args.add_argument('-d', '--device', default=None, type=str,
                       help='indices of GPUs to enable (default: all)')
     args.add_argument('--limited_memory', default=False, action='store_true',

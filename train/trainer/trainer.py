@@ -1017,7 +1017,7 @@ class Trainer_S(BaseTrainer):
 
 class Trainer_P(BaseTrainer):
     """
-    Trainer class
+    Trainer class for E2P DNN
     """
 
     def __init__(self, model, loss_ftns, optimizer, config, data_loader,
@@ -1110,6 +1110,14 @@ class Trainer_P(BaseTrainer):
 
             # get polarization from dataloader directly
             events, intensity, aolp, dolp, flow = self.to_device(item)
+            # The aolp is given to us as scalar 0-1 value representing -pi/2 to pi/2 angle (0 vertical).
+            # We convert it here to sin/cos projections for training the 2 channels of aolp representation.
+            # The AoLP output is [batch,chan,h,w] where chan is the 2 channels of sin/cos projection of angle.
+            # We need to replace the [b,1,h,w] with [b,2,h,w]
+            sin_aolp = torch.sin((aolp - .5) * torch.pi)
+            cos_aolp = torch.cos((aolp - .5) * torch.pi)
+            aolp = torch.squeeze(torch.stack((sin_aolp, cos_aolp),dim=1)) # squeeze to remove extra singleton dim that stack adds
+            pass
             # print(f"aolp min:{aolp.min()} aolp max:{aolp.max()}")
             # print(f'events shape:{events.shape} max:{events.max()} min:{events.min()}')
             # print('----')
@@ -1149,21 +1157,27 @@ class Trainer_P(BaseTrainer):
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity, normalize=True))
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity, normalize=True) * 2)
                     losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity, normalize=True) * 3)
-                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp, normalize=True))
+                    # losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp, normalize=True)) # removed aolp perceptual because aolp has 2 channels and perceptual loss only takes 1 (mono) or 3 (rgb) inputs
                     losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp, normalize=True))
                 if loss_name == 'mse_loss':
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
                     # losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
+                    # losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
                     losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp))
                 if loss_name == 'mse_loss_aolp':
-                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
-                if loss_name == 'abs_sin_loss':
-                    # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
-                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
+                    # losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
+                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'][:,[0]], aolp[:,[0]])) # do sin and cos separately to make them each mono
+                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'][:,[1]], aolp[:,[1]])) # strange indexing preserves singleton dimension
+                    # https://stackoverflow.com/questions/3551242/numpy-index-slice-without-losing-dimension-information
+                # if loss_name == 'abs_sin_loss':
+                #     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
+                #     losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
                     # losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp))
                 if loss_name == 'ssim_loss':
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
-                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
+                    # losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
+                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'][:,0:1], aolp[:,0:1]))
+                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'][:,1:2], aolp[:,1:2])) # sin cos separate
                     losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp))
                 # if loss_name == 'l2_dw_loss':
                 #     losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp, dolp, 'aolp'))

@@ -87,9 +87,21 @@ Steps are illustrated below.
 2.  It points to  [train.txt](data%2FE2PD%2Ftrain.txt) which lists the training input files.
 3. These files must be at the locations listed in train.txt
 
-![train_steps.png](train/media/train_steps.png)
+![train_steps.png](media/train_steps.png)
 
 #### Using tensorboard to visualize training
+
+On your localhost machine
+```
+    ssh -N -f -L localhost:16006:localhost:6006 tobi@sensors-extreme.lan.ini.uzh.ch
+```
+On remote (training machine)
+```
+    conda activate e2p # get tensorboard
+    cd e2p/train/ckpt
+    tensorboard --logdir=./log
+```
+On localhost point web browser to http://localhost:16006
 
 ![tensorboard_output.png](media%2Ftensorboard_output.png)
 
@@ -100,7 +112,30 @@ Steps are illustrated below.
 
 ![aolp mapping.png](..%2Fmedia%2Faolp%20mapping.png)
 
-### Test
+### Modifying loss functions
+
+1. under [train/model/loss.py](model/loss.py) define your favorite loss. 
+Added '_mse_circular_loss_' (actually wrong name. it's just 2-2cos(error)) and 'abs_sin_loss'.
+There is also _mse_loss_aolp_ in case you want a different coefficient for mse on aolp and dolp.  
+
+2. Then in [train/trainer/trainer.py](trainer/trainer.py), in the class Trainer_P 
+(which is the trainer used for training e2p), we added _if loss_name == 'abs_sin_loss'_ ... in line 1160. 
+Basically that section is defining the loss terms for 
+'a/' (aolp related)  'd/' (dolp related) and 'i/' (intensity related).  
+There you can actually write all loss terms you want and you can control whether 
+using them in the config file  (see next point )
+
+3. in the config files for example e2p-scratch-abs-sin-loss.json.  
+There is _perceptual_loss_, _mse_loss_ (now only used for dolp, check Trainer_P). 
+and abs_sin_loss, ssim_loss.  
+Basically if a loss term is not in the config file then it won't be used 
+
+
+
+
+### Testing model
+- Play back an .h5 dataset file showing GT from frames and E2P reconstruction:
+    See root [README](../README.md) for [player](../player.py).
 - test e2p model
   - `python my_test.py`
 - test firenet model

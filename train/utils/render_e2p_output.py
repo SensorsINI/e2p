@@ -14,14 +14,17 @@ def render_e2p_output(output, dolp_aolp_mask_level, brightness):
     """
     intensity = torch2cv2(output['i'])*brightness
     dolp = torch2cv2(output['d'])
-    # compute aolp mod 1 to unwrap the wrapped AoLP
-    # aolp = torch2cv2(output['a']%1) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
-    aolp = torch2cv2(output['a']) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
+    a_chans=output['a']
+    a_sin=a_chans[:,[0],...]
+    a_cos=a_chans[:,[1],...]
+    aolp_01=torch.atan2(a_sin,a_cos)
+    aolp=torch2cv2(aolp_01)
+    # aolp = torch2cv2(output['a']) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
     # find the DoLP values that are less than mask value and use them to mask out the AoLP values so they show up as black
     aolp_mask=np.where(dolp<dolp_aolp_mask_level*255) #2d array with 1 where aolp is valid, 0 otherwise
     aolp_mask_torch=output['d'].ge(dolp_aolp_mask_level)
     # compute median angle in radians, with zero being *vertical* polarization
-    median_aolp_angle=compute_median_aolp(torch.squeeze(output['a']),aolp_mask_torch).cpu().numpy().item()
+    median_aolp_angle=compute_median_aolp(aolp_01,aolp_mask_torch).cpu().numpy().item()
 
     # #visualizing aolp, dolp on tensorboard, tensorboard takes rgb values in [0,1]
     # this makes visualization work correctly in tensorboard.

@@ -29,7 +29,6 @@ prefs=MyPreferences()
 from utils.get_logger import get_logger
 log=get_logger(__name__)
 
-# import math
 from pathlib import Path
 
 from globals_and_utils import DOLP_AOLP_MASK_LEVEL, mycv2_put_text
@@ -44,17 +43,10 @@ from globals_and_utils import DOLP_AOLP_MASK_LEVEL, mycv2_put_text
 # from model import model_original as model_arch
 from train.model import model_v as model_arch
 from train.utils.render_e2p_output import render_e2p_output
-# from model import model_ed as model_arch
-# from model.model import ColorNet
 
-from train.utils.util import ensure_dir, flow2bgr_np
 from train.data_loader.data_loaders import InferenceDataLoader
 from train.utils.util import CropParameters, get_height_width, torch2cv2, \
     append_timestamp, setup_output_folder, torch2numpy, numpy2cv2
-from utils.timers import CudaTimer
-from train.utils.henri_compatible import make_henri_compatible
-
-from train.parse_config import ConfigParser
 
 model_info = {}
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

@@ -65,13 +65,19 @@ def make_flow_movie_p(positive_event_previews, negative_event_previews, predicte
     max_magnitude = None
     movie_frames = []
     for i, flow in enumerate(predicted_flows):
+        # the [0,...] indexing all singleton dimensions as needed
+        # expand to 3d for norms
         positive_voxel = quick_norm(positive_event_previews[i][0, ...]).expand(3, -1, -1)
         negative_voxel = quick_norm(negative_event_previews[i][0, ...]).expand(3, -1, -1)
         pred_intensity = quick_norm(predicted_intensities[i][0, ...]).expand(3, -1, -1)
-        pred_aolp = quick_norm(predicted_aolps[i][0, ...]).expand(3, -1, -1)
+        # aolp is 2 channel sin/cos so just do each separately
+        # pred_aolp = quick_norm(predicted_aolps[i][0, ...]).expand(3, -1, -1)
+        pred_aolp_sin = quick_norm(predicted_aolps[i][0, [0], ...])
+        pred_aolp_cos = quick_norm(predicted_aolps[i][0, [1], ...])
+        pred_aolp=torch.atan2(pred_aolp_sin, pred_aolp_cos).expand(3, -1, -1) # TODO actual angle in rad, might be rotated 90 deg because E2P calls zero angle vertical
         pred_dolp = quick_norm(predicted_dolps[i][0, ...]).expand(3, -1, -1)
         gt_intensity = groundtruth_intensities[i][0, ...].expand(3, -1, -1)
-        gt_aolp = groundtruth_aolps[i][0, ...].expand(3, -1, -1)
+        gt_aolp = groundtruth_aolps[i][0, ...].expand(3, -1, -1) # GT AoLP is already in rads
         gt_dolp = groundtruth_dolps[i][0, ...].expand(3, -1, -1)
 
         pred_flow_rgb = flow2rgb(flow[0, 0, :, :], flow[0, 1, :, :], max_magnitude)
@@ -88,6 +94,18 @@ def make_flow_movie_p(positive_event_previews, negative_event_previews, predicte
             gt_flow_rgb = flow2rgb(gt_flow[0, 0, :, :], gt_flow[0, 1, :, :], max_magnitude)
             imgs.append(gt_flow_rgb.float())
             # imgs.append(gt_flow_rgb.float().resize_(3, gt_flow_rgb.shape[1] // 2, gt_flow_rgb.shape[2] // 2))
+
+        imgs.append(pred_intensity)
+        imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(pred_aolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HSV), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
+        imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(pred_dolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HOT), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
+        # imgs.append(blank)
+        imgs.append(blank)
+        imgs.append(gt_intensity)
+        imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(gt_aolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HSV), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
+        imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(gt_dolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HOT), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
+        # imgs.append(blank)
+        imgs.append(blank)        
+        
         movie_frame = utils.make_grid(imgs, nrow=4)
         movie_frames.append(movie_frame)
     return torch.stack(movie_frames, dim=0).unsqueeze(0)

@@ -911,6 +911,7 @@ class BaseVoxelDataset_p(Dataset):
             raise Exception('Cannot specify both LegacyNorm and RobustNorm')
 
         self.normalize_voxels = False
+        
         for norm in ['RobustNorm', 'LegacyNorm']:
             if norm in transforms.keys():
                 vox_transforms_list = [eval(t)(**kwargs) for t, kwargs in transforms.items()]
@@ -920,6 +921,7 @@ class BaseVoxelDataset_p(Dataset):
                 break
 
         transforms_list = [eval(t)(**kwargs) for t, kwargs in transforms.items()]
+        # print(f"***************whats in transforms list?? {transforms_list}")
 
         if len(transforms_list) == 0:
             self.transform = None
@@ -930,6 +932,7 @@ class BaseVoxelDataset_p(Dataset):
         if not self.normalize_voxels:
             self.vox_transform = self.transform
 
+        # print("what in transform and vox_transform?")
         # print(self.transform)
         # print(self.vox_transform)
         # exit(0)
@@ -967,9 +970,17 @@ class BaseVoxelDataset_p(Dataset):
                 # print('dt is zero')
             else:
                 voxel = self.get_voxel_grid(xs, ys, ts, ps, combined_voxel_channels=self.combined_voxel_channels)
-
+                voxel_pre = voxel
         # events voxel
+
         voxel = self.transform_voxel(voxel, seed).float()
+
+        # to_save = {'xs':xs, 'ys':ys, 'ts':ts, 'ps':ps, 'get_voxel_grid':voxel_pre, 'voxel':voxel}
+        # import pickle
+        # with open('debug_dict_from_e2p.pickle', 'wb') as f:
+        #     # Dump the dictionary to the file
+        #     pickle.dump(to_save, f)
+
         dt = ts_k - ts_0
         if dt == 0:
             dt = np.array(0.0)
@@ -1135,6 +1146,7 @@ class BaseVoxelDataset_p(Dataset):
         if combined_voxel_channels:
             # generate voxel grid which has size self.num_bins x H x W
             voxel_grid = events_to_voxel_torch(xs, ys, ts, ps, self.num_bins, sensor_size=self.sensor_resolution)
+            # print(f"from events_to_voxel_torch min{voxel_grid.min()} max:{voxel_grid.max()}")
         else:
             # generate voxel grid which has size 2*self.num_bins x H x W
             voxel_grid = events_to_neg_pos_voxel_torch(xs, ys, ts, ps, self.num_bins,
@@ -1142,7 +1154,7 @@ class BaseVoxelDataset_p(Dataset):
             voxel_grid = torch.cat([voxel_grid[0], voxel_grid[1]], 0)
 
         voxel_grid = voxel_grid * self.hot_events_mask
-
+        
         return voxel_grid
 
     def transform_voxel(self, voxel, seed):

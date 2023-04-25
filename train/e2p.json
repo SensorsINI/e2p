@@ -2,7 +2,7 @@
     "name": "e2p",
     "n_gpu": 1,
     "arch": {
-        "type": "V16",
+        "type": "V20",
         "args": {
             "unet_kwargs": {
                 "num_bins": 5,
@@ -15,12 +15,12 @@
         "type": "HDF5DataLoader",
         "args": {
             "data_file": "./data/E2PD/train.txt",
-            "batch_size": 10,
+            "batch_size": 4,
             "shuffle": true,
             "num_workers": 16,
             "pin_memory": true,
             "sequence_kwargs": {
-                "sequence_length": 40,
+                "sequence_length": 20,
                 "dataset_type": "DynamicH5Dataset_v2e_p",
                 "proba_pause_when_running": 0.05,
                 "proba_pause_when_paused": 0.9,
@@ -36,7 +36,7 @@
                 "dataset_kwargs": {
                     "transforms": {
                         "RandomCrop": {
-                            "size": 112,
+                            "size": 56,
                             "preserve_mosaicing_pattern": true
                         }
                     },
@@ -52,16 +52,16 @@
             "data_file": "./data/E2PD/test.txt",
             "batch_size": 4,
             "shuffle": false,
-            "num_workers": 8,
+            "num_workers": 16,
             "pin_memory": true,
             "sequence_kwargs": {
-                "sequence_length": 320,
+                "sequence_length": 160,
                 "dataset_type": "DynamicH5Dataset_v2e_p",
                 "normalize_image": false,
                 "dataset_kwargs": {
                     "transforms": {
                         "CenterCrop": {
-                            "size": 112,
+                            "size": 56,
                             "preserve_mosaicing_pattern": true
                         }
                     },
@@ -99,7 +99,7 @@
         }
     },
     "trainer": {
-        "epochs": 80,
+        "epochs": 100,
         "save_dir": "./ckpt",
         "save_period": 10,
         "verbosity": 2,

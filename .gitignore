@@ -1,2 +1,8 @@
 .gitignore
 __pycache__
+ckpt_zw/
+ckpt_backup_including_trash/
+data/
+ckpt/log/
+ckpt/models/
+train/trainer/trainer_before_abs_sin.py

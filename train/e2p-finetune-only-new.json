@@ -15,12 +15,12 @@
         "type": "HDF5DataLoader",
         "args": {
             "data_file": "./data/E2PD/train-finetune.txt",
-            "batch_size": 8,
+            "batch_size": 1,
             "shuffle": true,
             "num_workers": 16,
             "pin_memory": true,
             "sequence_kwargs": {
-                "sequence_length": 30,
+                "sequence_length": 90,
                 "dataset_type": "DynamicH5Dataset_v2e_p",
                 "proba_pause_when_running": 0.05,
                 "proba_pause_when_paused": 0.9,
@@ -50,7 +50,7 @@
         "type": "HDF5DataLoader",
         "args": {
             "data_file": "./data/E2PD/test.txt",
-            "batch_size": 4,
+            "batch_size": 1,
             "shuffle": false,
             "num_workers": 16,
             "pin_memory": true,
