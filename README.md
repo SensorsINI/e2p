@@ -20,10 +20,10 @@ that outputs both conventional polarization frames and asynchronous,
 continuously per-pixel polarization brightness changes (polarization events) 
 with **_fast temporal resolution_** and **_large dynamic range_**.
 
-This project enables live demonstration of the E2P PDAVIS as illustrated below.
+This project enables live demonstration of the E2P PDAVIS as illustrated above.
 
-See subfolder [train](train) for training new and improved E2P DNNs.
-
+1. See subfolder [train](train) for training new and improved E2P DNNs and for the PDAVIS E2P dataset.
+2. See [PDAVIS shared google drive](https://drive.google.com/drive/folders/14whUmGkxac34QsQkG3IuJUKXmc_H_AJc?usp=sharing) for PDAVIS raw data and other material used to prepare the first PDAVIS camera publication Gruev2022.
 
 ### 2. Requirements
 #### 2.1. Ubuntu
