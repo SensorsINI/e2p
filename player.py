@@ -24,6 +24,7 @@ from thop import profile
 # from thop import clever_format
 from engineering_notation import EngNumber as eng # only from pip
 
+from utils.load_model_from_args import load_model_from_args
 from utils.prefs import MyPreferences
 prefs=MyPreferences()
 from utils.get_logger import get_logger
@@ -60,34 +61,6 @@ model_info = {}
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-def load_model(args):
-    checkpoint = torch.load(args.checkpoint_path)
-    config = checkpoint['config']
-    log.info(f"config['arch']={config['arch']}")
-
-    try:
-        model_info['num_bins'] = config['arch']['args']['unet_kwargs']['num_bins']
-    except KeyError:
-        model_info['num_bins'] = config['arch']['args']['num_bins']
-    log.info(f"model_info['num_bins']={model_info['num_bins']}")
-    # logger = config.get_logger('test')
-
-    # build model architecture
-    model = config.init_obj('arch', model_arch)
-    log.info(f"model={model}")
-    if config['n_gpu'] > 1:
-        model = torch.nn.DataParallel(model)
-    state_dict = checkpoint['state_dict']
-    model.load_state_dict(state_dict)
-    log.info('Load my trained weights succeeded!')
-
-    model = model.to(device)
-    model.eval()
-    for param in model.parameters():
-        param.requires_grad = False
-
-    return model
-
 
 def minmax_normalization(image, device):
     mini = np.percentile(torch.flatten(image).cpu().detach().numpy(), 1)
@@ -121,7 +94,7 @@ def main(args):
         os.environ['CUDA_VISIBLE_DEVICES'] = args.device
     log.info('Loading checkpoint: {} ...'.format(args.checkpoint_path))
 
-    model = load_model(args)
+    model = load_model_from_args(args)
 
     reset_e2p_network(model)
     frame_number = -1
@@ -200,7 +173,7 @@ def main(args):
                 if f is not None:
                     prefs.put('last_model_selected', f)
                     args.checkpoint_path = f
-                    model=load_model(args)
+                    model=load_model_from_args(args)
                     print(f'changed model to {args.checkpoint_path}')
             elif k==ord('h') or k==ord('?'):
                 print('ESC or x: exit\n'

@@ -26,6 +26,7 @@ import torch
 from train.events_contrast_maximization.utils.event_utils import events_to_voxel_torch
 from train.utils.render_e2p_output import render_e2p_output
 from train.utils.util import torch2numpy, numpy2cv2
+from utils.load_model_from_args import load_model_from_args
 from easygui import fileopenbox
 from utils.prefs import MyPreferences
 prefs=MyPreferences()
@@ -45,6 +46,7 @@ from train.parse_config import ConfigParser
 from multiprocessing import Queue
 
 sys.path.append('train') # needed to get model to load using torch.load with train.parse_config ConfigParser.. don't understand why
+
 
 
 
@@ -144,10 +146,15 @@ def consumer(queue:Queue):
             elif k==ord('e'): # reset network state
                 log.info('resetting E2P state')
                 reset_e2p_state(args, model)
-            # elif k == ord('m'): # TODO currently broken
-            #     args.use_firenet = not args.use_firenet
-            #     model,checkpoint_path = load_selected_model(args, device)
-            #     print(f' changed mode to args.use_firenet={args.use_firenet}')
+            elif k==ord('m'):
+                lastmodel = prefs.get('last_model_selected', 'models/*.pth')
+                f = fileopenbox(msg='select model checkpoint', title='Model checkpoint', default=lastmodel,
+                                filetypes=['*.pth'])
+                if f is not None:
+                    prefs.put('last_model_selected', f)
+                    args.checkpoint_path = f
+                    model=load_model_from_args(args)
+                    print(f'changed model to {args.checkpoint_path}')
             elif k == ord('b'):
                 brightness *= 1.1
                 prefs.put('brightness', brightness)
