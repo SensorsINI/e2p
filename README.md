@@ -60,7 +60,7 @@ From terminal
 
 We successfully run the PDAVIS demo on Windows 11 inside a WSL2 virtual Ubuntu 22 using [usbipd](https://github.com/dorssel/usbipd-win) to map the PDAVIS to WSL2.
 * We use the handy Windows utility [wsl-usb-gui](https://gitlab.com/alelec/wsl-usb-gui) to control usbipd 
-* We use the great Windows X server [https://sourceforge.net/projects/vcxsrv/](VcXsrv) to develop with pycharm and display the demo output to the Windows 11 desktop.
+* We use the great Windows X server [VcXsrv](https://sourceforge.net/projects/vcxsrv/) to develop with pycharm and display the demo output to the Windows 11 desktop.
 * VcXsrv needs to be set to disable access control
 
 ### 3. Run
