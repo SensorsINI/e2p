@@ -17,6 +17,8 @@ import cv2
 import sys
 import math
 import time
+
+import easygui
 import numpy.ma as ma
 import socket
 import numpy as np
@@ -310,6 +312,7 @@ def producer(queue:Queue):
                                     try:
                                         save_events_to_numpy(recording_folder_base, saved_events)
                                     except Exception as e:
+                                        easygui.exceptionbox(f'could not save events: {e}')
                                         log.error(f'could not save events: {e}')
                             elif k==ord(' '):
                                 paused=not paused
