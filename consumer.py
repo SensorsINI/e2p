@@ -196,6 +196,7 @@ def consumer(queue:Queue):
                             reset_e2p_state(args, model)
                             log.info(f'playing {playback_events.shape} events with duration {(playback_timestamps[-1]-playback_timestamps[0]):.3f}s from {playback_file}')
                         except Exception as e:
+                            easygui.exceptionbox(f'could not load events from {playback_file}: got {str(e)}')
                             log.error(f'could not load events from {playback_file}: got {str(e)}')
                             playback_file=None
                     else:
