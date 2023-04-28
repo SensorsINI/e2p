@@ -12,7 +12,10 @@ def render_e2p_output(output, dolp_aolp_mask_level=0.2, brightness=1.0,median_an
     :returns: intensity, aolp, dolp RGB color 2d images that are uint8 from 0-255, suitable for cv2.imshow rendering
         the DNN aolp output 0 correspond to polarization angle -pi/2 and 255 correspond to +pi/2
     """
-    intensity = torch2cv2(output['i'])*brightness
+    i=output['i']*brightness
+    i_gt1=i.gt(1)
+    i[i_gt1]=1
+    intensity = torch2cv2(i)
     dolp = torch2cv2(output['d'])
     # compute aolp mod 1 to unwrap the wrapped AoLP
     # aolp = torch2cv2(output['a']%1) # the DNN aolp output 0 correspond to polarization angle -pi/2 and 1 correspond to +pi/2
