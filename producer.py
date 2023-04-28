@@ -143,7 +143,7 @@ def producer(queue:Queue):
         return 0 == len(w)
 
 
-    print_key_help()
+    # print_key_help()
     try:
         printed_udp_size=False
         while True:
@@ -320,7 +320,7 @@ def producer(queue:Queue):
                             elif k==ord('h') or k==ord('?'):
                                 print_key_help()
                             elif k!=255:
-                                log.warning(f'unknown keystroke {k}')
+                                log.warning(f'unknown keystroke {k}; type h or ? to see help')
                     if recording_activated:
                         recording_frame_number = write_next_image(recording_folder_current, recording_frame_number,
                                                                   frame_255[-1])
@@ -373,7 +373,7 @@ def is_frame_not_complete(events, flex_time_mode, frame_duration_ms, frame_count
         return eventCount<frame_count_k_events*1000
 
 def print_key_help():
-    print('producer keys to use in cv2 image window:\n'
+    easygui.msgbox(title='DVS keys',msg='producer keys to use in cv2 image window:\n'
           'h or ?: print this help\n'
           'p: print timing info\n'
           't: toggle flex time (constant-duration / constant-count frames)\n'

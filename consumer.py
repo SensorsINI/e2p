@@ -119,7 +119,7 @@ def consumer(queue:Queue):
     last_frame_number = 0
     voxel_five_float32 = None
     c = 0
-    print_key_help(args)
+    # print_key_help(args)
     frames_without_drop = 0
     reset_e2p_state(args,model)
 
@@ -210,8 +210,8 @@ def consumer(queue:Queue):
 
 
             elif k != 255:
-                print_key_help(args)
-                print(f'unknown key {k}')
+                # print_key_help(args)
+                print(f'unknown key {k}, type h or ? to see help')
 
             with Timer('receive voxels'):
                 if playback_file:
@@ -351,7 +351,7 @@ def get_timestr():
 
 def print_key_help(args):
     """Print keyboard help."""
-    print(f'**********************\nproducer keys to use in cv2 image window:\n'
+    easygui.msgbox(title='pdavis keys',msg=f'**********************\nproducer keys to use in cv2 image window:\n'
           f'- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
           'h or ?: print this help\n'
           'p: print timing info\n'
