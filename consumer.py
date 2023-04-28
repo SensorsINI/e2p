@@ -15,6 +15,7 @@ from queue import Empty
 
 import socket
 
+import easygui
 from thop import profile, clever_format
 
 from globals_and_utils import *
@@ -153,7 +154,11 @@ def consumer(queue:Queue):
                 if f is not None:
                     prefs.put('last_model_selected', f)
                     args.checkpoint_path = f
-                    model=load_model_from_args(args)
+                    try:
+                        model=load_model_from_args(args)
+                    except AttributeError as e:
+                        easygui.exceptionbox(f'could not load model, got {e}')
+                        log.error(f'could not load model, got {e}')
                     print(f'changed model to {args.checkpoint_path}')
             elif k == ord('b'):
                 brightness *= 1.1
