@@ -88,10 +88,21 @@ def make_flow_movie_p(positive_event_previews, negative_event_previews, predicte
             gt_flow_rgb = flow2rgb(gt_flow[0, 0, :, :], gt_flow[0, 1, :, :], max_magnitude)
             imgs.append(gt_flow_rgb.float())
             # imgs.append(gt_flow_rgb.float().resize_(3, gt_flow_rgb.shape[1] // 2, gt_flow_rgb.shape[2] // 2))
+
+        imgs.append(pred_intensity)
+        imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(pred_aolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HSV), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
+        imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(pred_dolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HOT), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
+        # imgs.append(blank)
+        imgs.append(blank)
+        imgs.append(gt_intensity)
+        imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(gt_aolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HSV), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
+        imgs.append(torch.Tensor(cv2.cvtColor(cv2.applyColorMap(np.moveaxis(np.asarray(gt_dolp.cpu()*255).astype(np.uint8), 0, -1), cv2.COLORMAP_HOT), cv2.COLOR_BGR2RGB)).permute(2,0,1).cuda()/255.)
+        # imgs.append(blank)
+        imgs.append(blank)        
+        
         movie_frame = utils.make_grid(imgs, nrow=4)
         movie_frames.append(movie_frame)
     return torch.stack(movie_frames, dim=0).unsqueeze(0)
-
 
 def flush(summary_writer):
     for writer in summary_writer.all_writers.values():

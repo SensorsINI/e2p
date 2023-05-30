@@ -106,6 +106,15 @@ def main(config):
     #                   valid_data_loader=valid_data_loader,
     #                   lr_scheduler=lr_scheduler)
 
+    # check pytorch version, if >= 2.0 use compile
+    version = torch.__version__
+    major_version = int(version.split('.')[0])
+
+    if major_version >= 2:
+        model = torch.compile(model)
+    else:
+        pass
+
     trainer = Trainer_P(model, loss_ftns, optimizer,
                       config=config,
                       data_loader=data_loader,
