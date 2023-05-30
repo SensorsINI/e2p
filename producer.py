@@ -69,60 +69,18 @@ def producer(queue:Queue):
     warning_counter=0
     paused=False
 
-    # open davis camera, set biases
-    log.info('opening PDAVIS camera')
-    device = DAVIS(noise_filter=True)
+    device=None
     def cleanup():
-        log.info('closing {}'.format(device))
-        device.shutdown()
+        if not device is None:
+            log.info('closing {}'.format(device))
+            device.shutdown()
         cv2.destroyAllWindows()
         if recording_folder_base is not None and recording_frame_number>0:
             log.info(f'*** recordings of {recording_frame_number - 1} frames saved in {recording_folder_base}')
             desktop.open(recording_folder_base)
     atexit.register(cleanup)
 
-    print("DVS USB ID:", device.device_id)
-    if device.device_is_master:
-        print("DVS is master.")
-    else:
-        print("DVS is slave.")
-    print("DVS Serial Number:", device.device_serial_number)
-    print("DVS String:", device.device_string)
-    print("DVS USB bus Number:", device.device_usb_bus_number)
-    print("DVS USB device address:", device.device_usb_device_address)
-    print("DVS size X:", device.dvs_size_X)
-    print("DVS size Y:", device.dvs_size_Y)
-    dvs_resolution=(device.dvs_size_Y,device.dvs_size_X)
-    print("Logic Version--checkpoint_path=models/checkpoint-epoch106.pth:", device.logic_version)
-    print("Background Activity Filter:",
-          device.dvs_has_background_activity_filter)
-    print("Color Filter", device.aps_color_filter, type(device.aps_color_filter))
-    print(device.aps_color_filter == 1)
-    # device.start_data_stream()
-    assert (device.send_default_config())
-    # following buffer size/number commands fail on WSL2, nothing comes from DAVIS
-    # attempt to set up USB host buffers for acquisition thread to minimize latency
-    # assert (device.set_config(
-    #     libcaer.CAER_HOST_CONFIG_USB,
-    #     libcaer.CAER_HOST_CONFIG_USB_BUFFER_NUMBER,
-    #     8))
-    # assert (device.set_config(
-    #     libcaer.CAER_HOST_CONFIG_USB,
-    #     libcaer.CAER_HOST_CONFIG_USB_BUFFER_SIZE,
-    #     64000))
-    # assert (device.set_config(
-    #     libcaer.CAER_HOST_CONFIG_PACKETS,
-    #     libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
-    #     10000)) # set max interval to this value in us. Set to not produce too many packets/sec here, not sure about reasoning
-    assert (device.data_start())
-    assert (device.set_data_exchange_blocking())
-
-    # setting bias after data stream started
-    log.info(f'setting biases from {BIASES_CONFIG_FILE}')
-    device.set_bias_from_json(BIASES_CONFIG_FILE)
-    biases_config_file_path=Path(BIASES_CONFIG_FILE)
-    biases_mtime=biases_config_file_path.stat().st_mtime  # get modification time of config
-
+    biases_config_file_path, biases_mtime, device, dvs_resolution = open_pdavis_camera(device)
 
     # if recording_folder is not None:
     #     log.info(f'will record to {recording_folder}')
@@ -163,7 +121,11 @@ def producer(queue:Queue):
                     events = None
                     # while events is None or duration of collected events is less than desired keep accumulating events
                     while is_frame_not_complete(events, flex_time_mode, frame_duration_ms, frame_count_k_events): # 0 is index of timestamp
-                        pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
+                        try:
+                            pol_events, num_pol_event,_, _, _, _, _, _ = device.get_event()
+                        except TypeError as e:
+                            log.error('PDAVIS returned no  events (probably unplugged), will try to reopen...')
+                            biases_config_file_path, biases_mtime, device, dvs_resolution = open_pdavis_camera(device)
                         if num_pol_event>0:
                             if events is None:
                                 events=pol_events # events[:,x] where for x 0 is time, 1 and 2 are x and y, 3 is polarity (OFF,ON)=(0,1) values, 4 is filtered status when noise filtering enabled
@@ -213,7 +175,7 @@ def producer(queue:Queue):
                         voxel_4d=np.expand_dims(voxel.numpy(),0) # need to expand to 4d for input to DNN
                         # log.debug(f'sending entire voxel volume on pipe with shape={voxel_4d.shape}')
                         if not queue.empty() and warning_counter < WARNING_INTERVAL or warning_counter % WARNING_INTERVAL == 0:
-                            log.warning('queue is full, cannot send voxel volume')
+                            log.warning('queue is not empty, will not send this voxel volume')
                             warning_counter+=1
                         else:
                             frame_number+=1
@@ -331,6 +293,63 @@ def producer(queue:Queue):
     except KeyboardInterrupt as e:
         log.info(f'got KeyboardInterrupt {e}')
         cleanup()
+
+
+def open_pdavis_camera(device):
+    # open davis camera, set biases
+    if not device is None:
+        log.info('closing {}'.format(device))
+        device.shutdown()
+        device=None
+
+    while device is None:
+        try:
+            log.info('opening PDAVIS camera')
+            device = DAVIS(noise_filter=True)
+        except ValueError as e:
+            log.error(f'failed to open PDAVIS camera: {e}. Sleeping 5s')
+            time.sleep(5)
+    print("DVS USB ID:", device.device_id)
+    if device.device_is_master:
+        print("DVS is master.")
+    else:
+        print("DVS is slave.")
+    print("DVS Serial Number:", device.device_serial_number)
+    print("DVS String:", device.device_string)
+    print("DVS USB bus Number:", device.device_usb_bus_number)
+    print("DVS USB device address:", device.device_usb_device_address)
+    print("DVS size X:", device.dvs_size_X)
+    print("DVS size Y:", device.dvs_size_Y)
+    dvs_resolution = (device.dvs_size_Y, device.dvs_size_X)
+    print("Logic Version--checkpoint_path=models/checkpoint-epoch106.pth:", device.logic_version)
+    print("Background Activity Filter:",
+          device.dvs_has_background_activity_filter)
+    print("Color Filter", device.aps_color_filter, type(device.aps_color_filter))
+    print(device.aps_color_filter == 1)
+    # device.start_data_stream()
+    assert (device.send_default_config())
+    # following buffer size/number commands fail on WSL2, nothing comes from DAVIS
+    # attempt to set up USB host buffers for acquisition thread to minimize latency
+    # assert (device.set_config(
+    #     libcaer.CAER_HOST_CONFIG_USB,
+    #     libcaer.CAER_HOST_CONFIG_USB_BUFFER_NUMBER,
+    #     8))
+    # assert (device.set_config(
+    #     libcaer.CAER_HOST_CONFIG_USB,
+    #     libcaer.CAER_HOST_CONFIG_USB_BUFFER_SIZE,
+    #     64000))
+    # assert (device.set_config(
+    #     libcaer.CAER_HOST_CONFIG_PACKETS,
+    #     libcaer.CAER_HOST_CONFIG_PACKETS_MAX_CONTAINER_INTERVAL,
+    #     10000)) # set max interval to this value in us. Set to not produce too many packets/sec here, not sure about reasoning
+    assert (device.data_start())
+    assert (device.set_data_exchange_blocking())
+    # setting bias after data stream started
+    log.info(f'setting biases from {BIASES_CONFIG_FILE}')
+    device.set_bias_from_json(BIASES_CONFIG_FILE)
+    biases_config_file_path = Path(BIASES_CONFIG_FILE)
+    biases_mtime = biases_config_file_path.stat().st_mtime  # get modification time of config
+    return biases_config_file_path, biases_mtime, device, dvs_resolution
 
 
 def save_events_to_numpy(recording_folder_base, saved_events):
