@@ -159,6 +159,21 @@ class abs_sin_loss():
         abs_sin_loss = self.loss(pred, target)
         return self.weight * abs_sin_loss
 
+class masked_abs_sin_loss():
+    def __init__(self, weight=1.0, threshold=None):
+        self.weight = weight
+        self.threshold = threshold
+    
+    def loss(self, pred, target, aolp_gt):
+        pred = pred*np.pi
+        target = target*np.pi
+        mask = aolp_gt > self.threshold
+        return torch.mean(torch.abs(torch.sin(pred*mask - target*mask)))  #changing it to -pi/2 to pi/2 first
+
+    def __call__(self, pred, target, aolp_gt):
+        abs_sin_loss = self.loss(pred, target, aolp_gt)
+        return self.weight * abs_sin_loss
+
 class l2_dw_loss():
     def __init__(self, weight=1.0):
         self.weight = weight
