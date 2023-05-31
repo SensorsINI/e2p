@@ -258,6 +258,12 @@ def consumer(queue:Queue):
                         if delta_time > .3:
                             log.warning(
                                 f'time since this frame was sent ({eng(delta_time)}s) is longer than .3s; consider increasing producer FRAME_DURATION_US which is currently {FRAME_DURATION_US}us')
+                        if delta_time >1:
+                            log.warning(f'delta time is greater than 600ms, clearing input queue')
+                            tries_left=10
+                            while not queue.empty() and tries_left>0:
+                                queue.get()
+                                tries_left-=1
                     except Empty:
                         image=np.zeros(args.sensor_resolution,dtype=np.uint8)
                         show_frame(image, 'polarization', cv2_resized)
@@ -355,11 +361,11 @@ def print_key_help(args):
           f'- or =: decrease or increase the AoLP DoLP mask level which is currently {args.dolp_aolp_mask_level}'
           'h or ?: print this help\n'
           'p: print timing info\n'
-          'o: open recording numpy file to play back\n'
+          'o: open recording numpy file to play back; hit o again to close playback.\n     Record an .npy in producer window using l for logging\n'
           's or f: slow down (briefer frames) or speed up (longer frames) playback'
           'b or d: brighter or darker frames\n'
           'a: toggle median angle display\n'
-          'r: toggle recording on/off; see console output for timestamped output folder\n'
+          'r: toggle recording PNG frames on/off; see console output for timestamped output folder of PNG frames\n'
           f'e: reset E2P hidden state; it is currently reset every {args.reset_period} frames by --reset_period argument\n'
           'space: toggle pause\n'
           # 'm: toggle between e2p and firenet models\n'
