@@ -295,6 +295,10 @@ def consumer(queue:Queue):
                     input = torch.from_numpy(voxel_five_float32).to(device)
                     if not args.use_firenet:  # e2p, just use voxel grid from producer
                         output = model(input)
+                        aolp = output['a']
+                        if aolp.shape[1] == 2:  #using sin/cos output, convert back to [0,1] first
+                            aolp = torch.atan2(aolp[:, 0:1], aolp[:, 1:2]+ 1e-6) / (2*np.pi) + 0.5  # map to [0,1]
+                            output['a'] = aolp
                         intensity, aolp, dolp = render_e2p_output(output, args.dolp_aolp_mask_level, brightness,median_angle_display) # output are RGB images with gray, HSV, and HOT coding
                         if frames_without_drop>0 and args.reset_period>0 and frames_without_drop%args.reset_period==0:
                             reset_e2p_state(args,model)

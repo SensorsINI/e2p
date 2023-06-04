@@ -241,19 +241,9 @@ def main(args):
             # aolp = torch2cv2(output['a'])
             # dolp = torch2cv2(output['d'])
             aolp = output['a']
-            # print(f'aolp shape:{aolp.shape}, aolp max:{aolp.max()}, aolp min:{aolp.min()}')
             if aolp.shape[1] == 2:  #using sin/cos output, convert back to [0,1] first
-                # predicted_tan = aolp[:, 0:1] / (aolp[:, 1:2] + 1e-6)  # getting the tan of aolp at each spatial location
-                # predicted_arctan = torch.arctan(predicted_tan)  # in -pi/2 to pi/2
-                # pos_arctan_mask = predicted_arctan >= 0
-                # neg_arctan_mask = predicted_arctan < 0
-                # aolp = pos_arctan_mask * (predicted_arctan / np.pi)  # map to [0,1]
-                # aolp = aolp + (-predicted_arctan / np.pi) * neg_arctan_mask
-                # aolp = aolp + neg_arctan_mask * (predicted_arctan / np.pi + 1)
-                # aolp = predicted_arctan / np.pi + 0.5  # map to [0,1]
                 aolp = torch.atan2(aolp[:, 0:1], aolp[:, 1:2]+ 1e-6) / (2*np.pi) + 0.5  # map to [0,1]
                 output['a'] = aolp
-                # print(f'**aolp shape:{aolp.shape}, aolp max:{aolp.max()}, aolp min:{aolp.min()}')
 
 
             intensity,aolp,dolp=render_e2p_output(output, args.dolp_aolp_mask_level, 1.0)
