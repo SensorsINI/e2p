@@ -49,8 +49,14 @@ def main():
                 pro.terminate()
                 con.terminate()
                 break
-        if not con.is_alive() and not pro.is_alive():
-            log.info('producer and consumer processes both dead, terminating loop')
+        if not con.is_alive() or not pro.is_alive():
+            log.info('either or both producer or consumer process(es) ended, terminating pdavis_demo loop')
+            if pro.is_alive():
+                log.debug('terminating producer')
+                pro.terminate()
+            if con.is_alive():
+                log.debug('terminating consumer')
+                con.terminate()
             break
         time.sleep(.3)
     log.debug('joining producer and consumer processes')
