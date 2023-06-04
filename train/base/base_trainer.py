@@ -176,17 +176,42 @@ class BaseTrainer:
         if not reset_monitor_best:
             self.mnt_best = checkpoint['monitor_best']
 
-        # load architecture params from checkpoint.
-        if checkpoint['config']['arch'] != self.config['arch']:
-            self.logger.warning("Warning: Architecture configuration given in config file is different from that of "
-                                "checkpoint. This may yield an exception while state_dict is being loaded.")
-        self.model.load_state_dict(checkpoint['state_dict'])
+        size_mismatch = False
+        mismatched_keys = []
+        try:
+            # load architecture params from checkpoint.
+            if checkpoint['config']['arch'] != self.config['arch']:
+                self.logger.warning("Warning: Architecture configuration given in config file is different from that of "
+                                    "checkpoint. This may yield an exception while state_dict is being loaded.")
+            self.model.load_state_dict(checkpoint['state_dict'])
+        except:
+            current_model_dict = self.model.state_dict()
+            loaded_state_dict = checkpoint['state_dict']
+            new_state_dict = {}
+            for k,v in zip(current_model_dict.keys(), loaded_state_dict.values()):
+                # print(f"**************k: {k}, v:{v.shape}*****************")
+                if v.size()==current_model_dict[k].size():
+                    print(f"loaded {k}, shape: {v.shape}")
+                    new_state_dict[k] = v
+                else:
+                    print(f"!!!!!!!! non matching size found, key is {k}, not loaded from pretrained checkpoint")
+                    new_state_dict[k] = current_model_dict[k]
+                    size_mismatch = True
+                    mismatched_keys.append(k)
+                # new_state_dict={k:v if v.size()==current_model_dict[k].size()  else  current_model_dict[k] }
+            # print(new_state_dict)
+            self.model.load_state_dict(new_state_dict, strict=False)
 
-        # load optimizer state from checkpoint only when optimizer type is not changed.
-        if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
-            self.logger.warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
-                                "Optimizer parameters not being resumed.")
+
+
+        if not size_mismatch:
+            # load optimizer state from checkpoint only when optimizer type is not changed.
+            if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
+                self.logger.warning("Warning: Optimizer type given in config file is different from that of checkpoint. "
+                                    "Optimizer parameters not being resumed.")
+            else:
+                self.optimizer.load_state_dict(checkpoint['optimizer'])
         else:
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
+            print("there was size mismatch. reinitialize adam optimizer")
 
         self.logger.info("Checkpoint loaded. Resume training from epoch {}".format(self.start_epoch))

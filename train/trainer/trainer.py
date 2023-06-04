@@ -19,6 +19,7 @@ from train.utils.training_utils import make_flow_movie, make_flow_movie_p, selec
 from train.utils.data import data_sources
 import cv2
 import math
+import time
 
 from torch.cuda.amp import autocast as autocast
 from torch.cuda.amp import GradScaler as GradScaler
@@ -1149,7 +1150,7 @@ class Trainer_P(BaseTrainer):
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity, normalize=True))
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity, normalize=True) * 2)
                     losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity, normalize=True) * 3)
-                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp, normalize=True))
+                    # losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp, normalize=True))
                     losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp, normalize=True))
                 if loss_name == 'mse_loss':
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
@@ -1161,9 +1162,17 @@ class Trainer_P(BaseTrainer):
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
                     losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
                     # losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp))
+                if loss_name == 'masked_abs_sin_loss':
+                    # print(f"shapes mask:{mask.shape} pred['a']:{pred['a'].shape} pred*mask :{pred['a']*mask}")
+                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp, dolp))
+                if loss_name == 'masked_sqrt_cos_loss':
+                    # print(f"shapes mask:{mask.shape} pred['a']:{pred['a'].shape} pred*mask :{pred['a']*mask}")
+                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp, dolp))
+                if loss_name == 'masked_aolp_sin_cos_mse_loss':
+                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp, dolp))
                 if loss_name == 'ssim_loss':
                     # losses[f'i/{loss_name}'].append(loss_ftn(pred['i'], intensity))
-                    losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
+                    # losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp))
                     losses[f'd/{loss_name}'].append(loss_ftn(pred['d'], dolp))
                 # if loss_name == 'l2_dw_loss':
                 #     losses[f'a/{loss_name}'].append(loss_ftn(pred['a'], aolp, dolp, 'aolp'))
@@ -1281,6 +1290,10 @@ class Trainer_P(BaseTrainer):
                 return {'val_' + k: v for k, v in val_log.items()}
         self.model.train()
         self.train_metrics.reset()
+
+        # start a timer
+        start_time = time.time()
+
         for batch_idx, sequence in enumerate(self.data_loader):
             self.optimizer.zero_grad()
             losses = self.forward_sequence(sequence)
@@ -1305,6 +1318,8 @@ class Trainer_P(BaseTrainer):
             if batch_idx == self.len_epoch:
                 break
         log = self.train_metrics.result()
+
+        print(f"epoch time:{time.time() - start_time}")
 
         print("validation")
         if self.do_validation and (epoch - 1) % self.save_period == 0:
@@ -1405,11 +1420,15 @@ class Trainer_P(BaseTrainer):
             # dolp = i135
 
             pred = self.model(events)
-
-            positive_event_previews.append(torch.sum(events[:, 0:events.shape[1] // 2, :, :], dim=1, keepdim=True))
-            negative_event_previews.append(torch.sum(events[:, events.shape[1] // 2:-1, :, :], dim=1, keepdim=True))
-            positive_voxels.append(events[:, 0:events.shape[1] // 2, :, :])
-            negative_voxels.append(events[:, events.shape[1] // 2:-1, :, :])
+            # print(f"******** events shape:{events.shape}")
+            # positive_event_previews.append(torch.sum(events[:, 0:events.shape[1] // 2, :, :], dim=1, keepdim=True))
+            # negative_event_previews.append(torch.sum(events[:, events.shape[1] // 2:-1, :, :], dim=1, keepdim=True))
+            # positive_voxels.append(events[:, 0:events.shape[1] // 2, :, :])
+            # negative_voxels.append(events[:, events.shape[1] // 2:-1, :, :])
+            positive_event_previews.append(torch.sum(events, dim=1, keepdim=True))
+            negative_event_previews.append(torch.sum(events, dim=1, keepdim=True))
+            positive_voxels.append(events)
+            negative_voxels.append(events)
 
             pred_flows.append(pred.get('flow', 0 * flow))
             pred_intensities.append(pred['i'])
@@ -1428,21 +1447,21 @@ class Trainer_P(BaseTrainer):
                 if output is not None:
                     video_tensor = make_tc_vis(output[1])
                     self.writer.writer.add_video(f'warp_intensity/tc_{tag_prefix}',
-                                                 video_tensor, global_step=epoch, fps=2)
+                                                 video_tensor, global_step=epoch, fps=20)
                     break
             for i, aolp in enumerate(aolps):
                 output = tc_loss_ftn(i, aolp, pred_aolps[i], flows[i], output_images=True)
                 if output is not None:
                     video_tensor = make_tc_vis(output[1])
                     self.writer.writer.add_video(f'warp_aolp/tc_{tag_prefix}',
-                                                 video_tensor, global_step=epoch, fps=2)
+                                                 video_tensor, global_step=epoch, fps=20)
                     break
             for i, dolp in enumerate(dolps):
                 output = tc_loss_ftn(i, dolp, pred_dolps[i], flows[i], output_images=True)
                 if output is not None:
                     video_tensor = make_tc_vis(output[1])
                     self.writer.writer.add_video(f'warp_dolp/tc_{tag_prefix}',
-                                                 video_tensor, global_step=epoch, fps=2)
+                                                 video_tensor, global_step=epoch, fps=20)
                     break
 
         vw_loss_ftn = self.get_loss_ftn('voxel_warp_flow_loss')
@@ -1452,14 +1471,14 @@ class Trainer_P(BaseTrainer):
                 if output is not None:
                     video_tensor = make_vw_vis(output[1])
                     self.writer.writer.add_video(f'warp_positive_voxels/tc_{tag_prefix}',
-                                                 video_tensor, global_step=epoch, fps=1)
+                                                 video_tensor, global_step=epoch, fps=20)
                     break
             for i, intensity in enumerate(intensities):
                 output = vw_loss_ftn(negative_voxels[i], flows[i], output_images=True)
                 if output is not None:
                     video_tensor = make_vw_vis(output[1])
                     self.writer.writer.add_video(f'warp_negative_voxels/tc_{tag_prefix}',
-                                                 video_tensor, global_step=epoch, fps=1)
+                                                 video_tensor, global_step=epoch, fps=20)
                     break
 
         # histogram
@@ -1478,6 +1497,9 @@ class Trainer_P(BaseTrainer):
         negative_non_zero_voxel = negative_non_zero_voxel[negative_non_zero_voxel != 0]
         if torch.numel(negative_non_zero_voxel) == 0:
             negative_non_zero_voxel = 0
+
+        # print(f"lengths pred_flow:{len(pred_flows)}, pred_intensities:{len(pred_intensities)} aolps :{len(pred_aolps)} dolps:{len(pred_dolps)}")
+        # print(f"******** pred['a'] shape:{pred['a'].shape}")
         self.writer.add_histogram(f'{tag_prefix}_input/negative', negative_non_zero_voxel)
         self.writer.add_histogram(f'{tag_prefix}_flow/prediction', torch.stack(pred_flows))
         self.writer.add_histogram(f'{tag_prefix}_intensity/prediction', torch.stack(pred_intensities))
@@ -1753,6 +1775,10 @@ class Trainer_RP(BaseTrainer):
             negative_event_previews.append(torch.sum(events[:, events.shape[1] // 2:-1, :, :], dim=1, keepdim=True))
             positive_voxels.append(events[:, 0:events.shape[1] // 2, :, :])
             negative_voxels.append(events[:, events.shape[1] // 2:-1, :, :])
+            # positive_event_previews.append(torch.sum(events, dim=1, keepdim=True))
+            # negative_event_previews.append(torch.sum(events, dim=1, keepdim=True))
+            # positive_voxels.append(events)
+            # negative_voxels.append(events)
 
             pred_flows.append(pred.get('flow', 0 * flow))
             pred_intensities.append(pred['i'])

@@ -56,7 +56,7 @@ def make_flow_movie_p(positive_event_previews, negative_event_previews, predicte
     # positive_event_previews: a list of [1 x 1 x H x W] positive event previews
     # negative_event_previews: a list of [1 x 1 x H x W] negative event previews
     # predicted_intensities: a list of [1 x 1 x H x W] predicted intensities
-    # predicted_aolps: a list of [1 x 1 x H x W] predicted aolps
+    # predicted_aolps: a list of [1 x 1 x H x W] predicted aolps  or a list of [1 x 2 x H x W] predicted aolps, sin/cos
     # predicted_dolps: a list of [1 x 1 x H x W] predicted dolps
     # predicted_flows: a list of [1 x 2 x H x W] predicted flows
     # for movie, we need to pass [1 x T x 1 x H x W] where T is the time dimension max_magnitude = 40
@@ -68,7 +68,19 @@ def make_flow_movie_p(positive_event_previews, negative_event_previews, predicte
         positive_voxel = quick_norm(positive_event_previews[i][0, ...]).expand(3, -1, -1)
         negative_voxel = quick_norm(negative_event_previews[i][0, ...]).expand(3, -1, -1)
         pred_intensity = quick_norm(predicted_intensities[i][0, ...]).expand(3, -1, -1)
-        pred_aolp = quick_norm(predicted_aolps[i][0, ...]).expand(3, -1, -1)
+        # print(f"---- shape of predicted_aolps:{predicted_aolps[i].shape}")
+        if predicted_aolps[i].shape[1] == 2:
+            # predicted_tan = predicted_aolps[i][:,0:1] / (predicted_aolps[i][:,1:2] + 1e-6)  # getting the tan of aolp at each spatial location
+            # predicted_arctan = torch.arctan(predicted_tan) # in -pi/2 to pi/2
+            # pos_arctan_mask = predicted_arctan >= 0
+            # neg_arctan_mask = predicted_arctan < 0
+            # pred_aolp = pos_arctan_mask * (predicted_arctan/np.pi) # map to [0,1]
+            # pred_aolp = pred_aolp + neg_arctan_mask * (predicted_arctan/np.pi + 1)
+
+            # calculate atan2 of sin/cos
+            pred_aolp = torch.atan2(predicted_aolps[i][:,0:1], predicted_aolps[i][:,1:2])
+            pred_aolp = pred_aolp / (2*np.pi) + 0.5 # map to [0,1]
+        pred_aolp = quick_norm(pred_aolp[0, ...]).expand(3, -1, -1)
         pred_dolp = quick_norm(predicted_dolps[i][0, ...]).expand(3, -1, -1)
         gt_intensity = groundtruth_intensities[i][0, ...].expand(3, -1, -1)
         gt_aolp = groundtruth_aolps[i][0, ...].expand(3, -1, -1)
@@ -76,6 +88,7 @@ def make_flow_movie_p(positive_event_previews, negative_event_previews, predicte
 
         pred_flow_rgb = flow2rgb(flow[0, 0, :, :], flow[0, 1, :, :], max_magnitude)
         blank = torch.zeros_like(gt_intensity)
+        # print(f"***********  voxel shape:{positive_voxel.shape}  pred_intensity shape:{pred_intensity.shape} ")
         imgs = [positive_voxel.resize_(3, positive_voxel.shape[1] // 2, positive_voxel.shape[2] // 2),
                 negative_voxel.resize_(3, negative_voxel.shape[1] // 2, negative_voxel.shape[2] // 2),
                 blank, blank,

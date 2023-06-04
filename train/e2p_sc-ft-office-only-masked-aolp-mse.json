@@ -1,0 +1,115 @@
+{
+    "name": "e2p",
+    "n_gpu": 1,
+    "arch": {
+        "type": "E2PSC",
+        "args": {
+            "unet_kwargs": {
+                "num_bins": 5,
+                "base_num_channels": 32,
+                "kernel_size": 3
+            }
+        }
+    },
+    "data_loader": {
+        "type": "HDF5DataLoader",
+        "args": {
+            "data_file": "./data/E2PD/zw-train-finetune_with_rotate.txt",
+            "batch_size": 1,
+            "shuffle": true,
+            "num_workers": 16,
+            "pin_memory": true,
+            "sequence_kwargs": {
+                "sequence_length": 60,
+                "dataset_type": "DynamicH5Dataset_v2e_p",
+                "proba_pause_when_running": 0.05,
+                "proba_pause_when_paused": 0.9,
+                "normalize_image": false,
+                "noise_kwargs": {
+                    "noise_std": 0.1,
+                    "noise_fraction": 1.0
+                },
+                "hot_pixel_kwargs": {
+                    "hot_pixel_std": 0.1,
+                    "max_hot_pixel_fraction": 0.001
+                },
+                "dataset_kwargs": {
+                    "transforms": {
+                        "RandomCrop": {
+                            "size":112,
+                            "preserve_mosaicing_pattern": true
+                        }
+                    },
+                    "num_bins": 5,
+                    "combined_voxel_channels": true
+                }
+            }
+        }
+    },
+    "valid_data_loader": {
+        "type": "HDF5DataLoader",
+        "args": {
+            "data_file": "./data/E2PD/zw-test-office-only.txt",
+            "batch_size": 1,
+            "shuffle": false,
+            "num_workers": 16,
+            "pin_memory": true,
+            "sequence_kwargs": {
+                "sequence_length": 60,
+                "dataset_type": "DynamicH5Dataset_v2e_p",
+                "normalize_image": false,
+                "dataset_kwargs": {
+                    "transforms": {
+                        "CenterCrop": {
+                            "size": 160,
+                            "preserve_mosaicing_pattern": true
+                        }
+                    },
+                    "num_bins": 5,
+                    "combined_voxel_channels": true
+                }
+            }
+        }
+    },
+    "optimizer": {
+        "type": "Adam",
+        "args": {
+            "lr": 0.001,
+            "weight_decay": 0,
+            "amsgrad": true
+        }
+    },
+    "loss_ftns": {
+        "perceptual_loss": {
+            "weight": 1.0,
+            "net": "vgg"
+        },
+        "mse_loss": {
+            "weight": 60.0
+        },    
+        "masked_aolp_sin_cos_mse_loss": {
+            "weight": 100.0,
+            "threshold": 0.35
+        },
+        "ssim_loss": {
+            "weight": 1.0
+        }
+    },
+    "lr_scheduler": {
+        "type": "MultiStepLR",
+        "args": {
+            "milestones": [30, 50],
+            "gamma": 0.5
+        }
+    },
+    "trainer": {
+        "epochs": 70,
+        "save_dir": "/home/zuowen_temp/Desktop/PDAVIS/e2p/train/ckpt_zw",
+        "save_period": 2,
+        "verbosity": 2,
+        "monitor": "min loss",
+        "num_previews": 6,
+        "val_num_previews": 6,
+        "tensorboard": true
+    }
+}

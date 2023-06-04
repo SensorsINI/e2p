@@ -159,6 +159,61 @@ class abs_sin_loss():
         abs_sin_loss = self.loss(pred, target)
         return self.weight * abs_sin_loss
 
+class masked_abs_sin_loss():
+    def __init__(self, weight=1.0, threshold=None):
+        self.weight = weight
+        self.threshold = threshold
+    
+    def loss(self, pred, target, dolp_gt):
+        pred = pred*np.pi
+        target = target*np.pi
+        mask = dolp_gt > self.threshold
+        return torch.mean(torch.abs(torch.sin(pred*mask - target*mask)))  #changing it to -pi/2 to pi/2 first
+
+    def __call__(self, pred, target, dolp_gt):
+        abs_sin_loss = self.loss(pred, target, dolp_gt)
+        return self.weight * abs_sin_loss
+    
+
+class masked_sqrt_cos_loss():
+    def __init__(self, weight=1.0, threshold=None):
+        self.weight = weight
+        self.threshold = threshold
+    
+    def loss(self, pred, target, dolp_gt):
+        pred = pred*np.pi
+        target = target*np.pi
+        mask = dolp_gt > self.threshold
+        return torch.mean(torch.sqrt(2-2*torch.cos(pred*mask - target*mask) + 1e-8)) 
+
+    def __call__(self, pred, target, dolp_gt):
+        sqrt_cos_loss = self.loss(pred, target, dolp_gt)
+        return self.weight * sqrt_cos_loss 
+
+class masked_aolp_sin_cos_mse_loss():
+    def __init__(self, weight=1.0, threshold=None):
+        self.weight = weight
+        self.threshold = threshold
+    
+    def loss(self, pred, target, dolp_gt):
+        # get dolp mask with ground truth dolp, the aolp loss is only calculated on the pixels with large enough dolp
+        mask = dolp_gt > self.threshold
+        # pred is (batch, 2), target is (batch, 1) and is in [0,1]
+        # first shift the target in [0,1] to (-pi, pi)
+        target = target * 2 * np.pi - np.pi
+        # then get sin and cos of target
+        target_sin = torch.sin(target)
+        target_cos = torch.cos(target)
+        pred_sin = pred[:,0:1]
+        pred_cos = pred[:,1:2]
+        # print(f"shape target:{target.shape} target_sin:{target_sin.shape} pred:{pred.shape} pred_sin:{pred_sin.shape}")
+        return F.mse_loss(target_sin*mask, pred_sin*mask) \
+            + F.mse_loss(target_cos*mask, pred_cos*mask)
+
+    def __call__(self, pred, target, dolp_gt):
+        sqrt_cos_loss = self.loss(pred, target, dolp_gt)
+        return self.weight * sqrt_cos_loss     
+
 class l2_dw_loss():
     def __init__(self, weight=1.0):
         self.weight = weight

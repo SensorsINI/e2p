@@ -240,6 +240,22 @@ def main(args):
             # intensity = torch2cv2(output['i']) # these 3 outputs are scaled 0-1, torch2cv2 rescales to 0-255 uint8 2d images
             # aolp = torch2cv2(output['a'])
             # dolp = torch2cv2(output['d'])
+            aolp = output['a']
+            # print(f'aolp shape:{aolp.shape}, aolp max:{aolp.max()}, aolp min:{aolp.min()}')
+            if aolp.shape[1] == 2:  #using sin/cos output, convert back to [0,1] first
+                # predicted_tan = aolp[:, 0:1] / (aolp[:, 1:2] + 1e-6)  # getting the tan of aolp at each spatial location
+                # predicted_arctan = torch.arctan(predicted_tan)  # in -pi/2 to pi/2
+                # pos_arctan_mask = predicted_arctan >= 0
+                # neg_arctan_mask = predicted_arctan < 0
+                # aolp = pos_arctan_mask * (predicted_arctan / np.pi)  # map to [0,1]
+                # aolp = aolp + (-predicted_arctan / np.pi) * neg_arctan_mask
+                # aolp = aolp + neg_arctan_mask * (predicted_arctan / np.pi + 1)
+                # aolp = predicted_arctan / np.pi + 0.5  # map to [0,1]
+                aolp = torch.atan2(aolp[:, 0:1], aolp[:, 1:2]+ 1e-6) / (2*np.pi) + 0.5  # map to [0,1]
+                output['a'] = aolp
+                # print(f'**aolp shape:{aolp.shape}, aolp max:{aolp.max()}, aolp min:{aolp.min()}')
+
+
             intensity,aolp,dolp=render_e2p_output(output, args.dolp_aolp_mask_level, 1.0)
             iad = cv2.hconcat([intensity, aolp, dolp])
             # iad_f = cv2.hconcat([intensity_f, aolp_f, dolp_f])
@@ -247,6 +263,8 @@ def main(args):
             gt['i']=(torch.squeeze(item['intensity']))
             gt['a']=(torch.squeeze(item['aolp']))
             gt['d']=(torch.squeeze(item['dolp']))
+
+            # print(f"** gt['a'] max:{gt['a'].max()}, gt['a'] min:{gt['a'].min()}")
             # intensity_gt=(torch.squeeze(item['intensity']).numpy() * 255).astype(np.uint8)
             # aolp_gt=(torch.squeeze(item['aolp']).numpy() * 255).astype(np.uint8)
             # dolp_gt=(torch.squeeze(item['dolp']).numpy() * 255).astype(np.uint8)
@@ -330,7 +348,7 @@ if __name__ == '__main__':
     # parser.add_argument('--events_file_path', type=str, default='/mnt/c/Users/tobid/Downloads/Davis346B-2023-03-16T15-42-43+0100-00000000-0-pdavis-polfilter-tobi-office-window2.h5',
     parser.add_argument('--events_file_path', type=str, default=None,
                         help='path to events (HDF5)')
-    parser.add_argument('--output_folder', default="/tmp/output", type=str,
+    parser.add_argument('--output_folder', default="./tmp/output", type=str,
                         help='where to save outputs to')
     parser.add_argument('--dolp_aolp_mask_level', type=float, default=DOLP_AOLP_MASK_LEVEL, help='level of DoLP below which to mask the AoLP value since it is likely not meaningful')
     parser.add_argument('--height',  type=int, default=260,
