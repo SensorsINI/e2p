@@ -11,7 +11,7 @@
 
 from base_model import BaseModel
 from submodules import *
-
+from train.model.model_v import *
 
 class V16(BaseModel):
     """
