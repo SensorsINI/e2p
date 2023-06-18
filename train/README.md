@@ -89,6 +89,16 @@ Steps are illustrated below.
 
 ![train_steps.png](train/media/train_steps.png)
 
+#### Notes on training
+Most recent model checkpoints are all from the new architecture i.e. the angular outputs are 2-dim sin and cos to generate smooth
+aolp predictions that cross the 2pi cut smoothly.
+
+The most important things about the configuration are probably the loss.  
+For DoLP it is mse loss,  for aolp it is masked aolp mse loss. Masked means only counting loss on gt_dolp > 0.35.
+We found dolp is more important than aolp in training. 
+so you should set a larger weight for the dolp loss. 
+The model picks up a better dolp prediction and then the aolp prediction is meaningful and smooth.
+
 #### Using tensorboard to visualize training
 
 ![tensorboard_output.png](media%2Ftensorboard_output.png)

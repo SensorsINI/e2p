@@ -207,7 +207,10 @@ def consumer(queue:Queue):
             elif k==ord('f'):
                 playback_frame_duration*=np.sqrt(2)
                 print(f'frame duration increased to {playback_frame_duration*1e3:.2f}ms frames')
-
+            elif k==ord('m'):
+                log.info('choosing new e2p model')
+                args.browse_checkpoint=True
+                model, checkpoint_path = load_selected_model(args, device)
 
             elif k != 255:
                 # print_key_help(args)
@@ -371,6 +374,7 @@ def print_key_help(args):
           'a: toggle median angle display\n'
           'r: toggle recording PNG frames on/off; see console output for timestamped output folder of PNG frames\n'
           f'e: reset E2P hidden state; it is currently reset every {args.reset_period} frames by --reset_period argument\n'
+          f'm: browse for a new DNN model .pth file\n'
           'space: toggle pause\n'
           # 'm: toggle between e2p and firenet models\n'
           'q or x: exit\n*****************************')
