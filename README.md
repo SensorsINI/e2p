@@ -1,6 +1,6 @@
 ## Implementation of Events to Polarizartion (E2P) PDAVIS Live Demo
 
-https://user-images.githubusercontent.com/10061874/229672133-e27f91fb-77d3-4ad0-91f4-b944a8af62b1.mp4
+[![e2p PDAVIS demo](https://img.youtube.com/vi/r-y2GgmdmuA/0.jpg)](https://www.youtube.com/watch?v=r-y2GgmdmuA)
 
 The subject first holds a single polarization filter, then pans around the room. Then finally a set of 3 triangular polarization filters arranged at 60 degree angles. The E2P input is DVS voxel volumes of 5 frames (the final one is rendered as DVS) and output is the E2P reconstructed intensity, angle, and degree of linear polarization.
 
